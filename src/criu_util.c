@@ -1,0 +1,114 @@
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <signal.h>
+#include <stdlib.h>
+#include "criu_util.h"
+
+void criu_perror(int ret)
+{
+	/* NOTE: errno is set by libcriu */
+	switch (ret)
+	{
+	case -EBADE:
+		perror("RPC has returned fail");
+		break;
+	case -ECONNREFUSED:
+		perror("Unable to connect to CRIU");
+		break;
+	case -ECOMM:
+		perror("Unable to send/recv msg to/from CRIU");
+		break;
+	case -EINVAL:
+		perror("CRIU doesn't support this type of request."
+			   "You should probably update CRIU");
+		break;
+	case -EBADMSG:
+		perror("Unexpected response from CRIU."
+			   "You should probably update CRIU");
+		break;
+	default:
+		perror("Unknown error type code."
+			   "You should probably update CRIU");
+	}
+}
+
+int set_image_dump_criu(pid_t pid, const char *image_dir)
+{
+	int criu_err = 0;
+	int fd = open(image_dir, O_DIRECTORY);
+	if (fd < 0)
+	{
+		perror("image dir open failed");
+		kill(pid, SIGTERM);
+		exit(-1);
+	}
+
+	criu_err = criu_init_opts();
+	if (criu_err < 0)
+	{
+		criu_perror(criu_err);
+		kill(pid, SIGTERM);
+		exit(-2);
+	}
+
+	criu_set_pid(pid);
+	criu_set_log_file("dump.log");
+	criu_set_log_level(4);
+	criu_set_images_dir_fd(fd);
+	criu_set_shell_job(true);
+
+	return 0;
+}
+
+int set_image_restore_criu(const char *image_dir)
+{
+	int criu_err = 0;
+	int fd = open(image_dir, O_DIRECTORY);
+	if (fd < 0)
+	{
+		perror("image dir open failed");
+		exit(-1);
+	}
+
+	criu_err = criu_init_opts();
+	if (criu_err < 0)
+	{
+		criu_perror(criu_err);
+		exit(-1);
+	}
+
+	criu_set_log_file("restore.log");
+	criu_set_log_level(4);
+	criu_set_images_dir_fd(fd);
+	criu_set_shell_job(true);
+
+	return 0;
+}
+
+int image_dump_criu(pid_t pid)
+{
+	int criu_err = criu_dump();
+	if (criu_err < 0)
+	{
+		criu_perror(criu_err);
+		kill(pid, SIGTERM);
+		exit(-1);
+	}
+
+	return 0;
+}
+
+pid_t image_restore_criu()
+{
+	pid_t pid = criu_restore_child();
+    if (pid < 0)
+    {
+        perror("restore failed!");
+		exit(-1);
+    }
+
+	return pid;
+}
