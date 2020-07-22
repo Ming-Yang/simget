@@ -12,11 +12,6 @@
 #include "util.h"
 #include "criu_util.h"
 
-const char *process_path = "./test";
-const char *process_name = "test";
-const char *image_dir = "./dump";
-const int ov_insts = 1000000000;
-
 int perf_open_fd;
 int perf_child_pid;
 
@@ -41,6 +36,13 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 
 int main(int argc, char **argv)
 {
+    if(argc<2)
+    {
+        printf("need dump config json file\n");
+        return -1;
+    }
+    DumpCfg* cfg = get_cfg_from_json(argv[1]);
+    printf("get config finish\n");
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
     pe.type = PERF_TYPE_HARDWARE;
@@ -51,23 +53,24 @@ int main(int argc, char **argv)
     pe.exclude_hv = 1;
     pe.enable_on_exec = 1;
 
-    pe.sample_period = ov_insts;
+    pe.sample_period = cfg->process.ov_insts;
     pe.wakeup_events = 1;
 
     perf_child_pid = fork();
     if (perf_child_pid < 0)
     {
-        perror("vfork failed");
+        perror("fork failed");
         return -1;
     }
     else if (perf_child_pid == 0) //child
     {
         raise(SIGSTOP);
-        execl(process_path, process_name, NULL);
+        execv(cfg->process.path, cfg->process.args);
     }
     else //parent
     {
         waitpid(perf_child_pid, NULL, WUNTRACED);
+        cfg->process.child_pid = perf_child_pid;
         perf_open_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
         if (perf_open_fd == -1)
         {
@@ -75,6 +78,7 @@ int main(int argc, char **argv)
             kill(perf_child_pid, SIGTERM);
             return -1;
         }
+        cfg->process.perf_fd = perf_open_fd;
 
         // signal handler:
         // Configure signal handler
@@ -97,7 +101,8 @@ int main(int argc, char **argv)
         fcntl(perf_open_fd, F_SETOWN, getpid());
 
         // init criu
-        set_image_dump_criu(perf_child_pid, image_dir);
+        set_image_dump_criu(perf_child_pid, cfg->image_dir);
+        printf("config finish, resume child process...\n");
 
         // resume child process
         ioctl(perf_open_fd, PERF_EVENT_IOC_RESET, 0);

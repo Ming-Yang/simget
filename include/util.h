@@ -1,29 +1,25 @@
 #ifndef __UTIL_H
 #define __UTIL_H
 
-#include <stdio.h>
+#define MAX_ARGS 128
 
-void print_long(long long val)
+typedef struct
 {
-    int val_table[20];
-    int table_eles = 0;
-    while (val > 0)
-    {
-        val_table[table_eles] = val % 1000;
-        val /= 1000;
-        table_eles++;
-    }
-    for (int i = table_eles - 1; i >= 0; --i)
-    {
-        if (i == table_eles - 1)
-            printf("%d", val_table[i]);
-        else
-            printf("%03d", val_table[i]);
+    char *path;
+    char **args;
+    long long ov_insts;
+    int perf_fd;
+    int child_pid;
+}PerfCfg;
 
-        if (i != 0)
-            printf(",");
-    }
-    printf("\n");
-}
+typedef struct
+{
+    char *image_dir;
+    PerfCfg process;
+}DumpCfg;
+
+void print_long(long long);
+void print_dmp_cfg(DumpCfg* const);
+DumpCfg *get_cfg_from_json(const char *);
 
 #endif // __UTIL_H
