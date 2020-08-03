@@ -11,20 +11,19 @@
 #include "perf_event_open.h"
 #include "util.h"
 
-// const char *process_path = "./coremark.exe";
-// char* const process_args[] = {"coremark.exe", "0x0", "0x0", "0x66", "0", "7", "1", "2000", NULL};
-
-// const char *process_path = "./test";
-// char* const process_args[] = {"test", NULL};
-
-const char *process_path = "./perf_ov_restore";
-char* const process_args[] = {"perf_ov_restore", NULL};
-
 int perf_open_fd;
 int perf_child_pid;
 
 int main(int argc, char **argv)
 {
+    if(argc<2)
+    {
+        printf("need dump config json file\n");
+        return -1;
+    }
+    DumpCfg* cfg = get_cfg_from_json(argv[1]);
+    printf("get config finish\n");
+
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
     pe.type = PERF_TYPE_HARDWARE;
@@ -44,17 +43,17 @@ int main(int argc, char **argv)
     else if (fork_pid == 0) //child
     {
         raise(SIGSTOP);
-        execv(process_path, process_args);
+        execv(cfg->process.path, cfg->process.args);
     }
     else //parent
     {
-        // perf_child_pid = fork_pid;
-        // waitpid(perf_child_pid, NULL, WUNTRACED);
-
-        waitpid(fork_pid, NULL, WUNTRACED);
-        kill(fork_pid, SIGCONT);
+        perf_child_pid = fork_pid;
         waitpid(perf_child_pid, NULL, WUNTRACED);
-        kill(perf_child_pid, SIGSTOP);
+
+        // waitpid(fork_pid, NULL, WUNTRACED);
+        // kill(fork_pid, SIGCONT);
+        // waitpid(perf_child_pid, NULL, WUNTRACED);
+        // kill(perf_child_pid, SIGSTOP);
 
         perf_open_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
         if (perf_open_fd == -1)

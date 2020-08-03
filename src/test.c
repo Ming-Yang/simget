@@ -1,13 +1,23 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main()
 {
-    long long res=0;
-    for(long long i=0;i<1000000000;++i)
+    int *p = malloc(sizeof(int));
+    int *q = malloc(sizeof(int));
+    printf("%p,%p\n", p, q);
+    for (int i = 0; i < 128; ++i)
+        p[i] = i;
+
+    printf("%d\n", *q);
+
+    for (long long a = 100000000; a > 0; --a)
     {
-        res+=i;
+        int x = 0;
+        ++x;
     }
 
-    printf("%lld\n", res);
+    // printf("%lld\n", res);
     return 0;
 }

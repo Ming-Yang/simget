@@ -21,7 +21,7 @@ perf_ov_fd:perf_ov_fd.c test
 	gcc -o $@ $^
 
 perf_count:$(addprefix ${SRC_DIR},perf_count.c util.c) 
-	gcc -o ${OBJ_DIR}$@ $^ -I${INC_DIR}
+	gcc -o ${OBJ_DIR}$@ $^ -I${INC_DIR} ${LD_OPT}
 
 criu_dump:criu_dump.c criu_util.c
 	gcc -o $@ $^ -lcriu

@@ -43,6 +43,7 @@ int main(int argc, char **argv)
     }
     DumpCfg* cfg = get_cfg_from_json(argv[1]);
     printf("get config finish\n");
+
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
     pe.type = PERF_TYPE_HARDWARE;
@@ -51,10 +52,12 @@ int main(int argc, char **argv)
     pe.disabled = 1;
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
+    pe.exclude_idle = 1;
     pe.enable_on_exec = 1;
+    // pe.precise_ip = 1;
 
     pe.sample_period = cfg->process.ov_insts;
-    pe.wakeup_events = 1;
+    pe.wakeup_events = 100;
 
     perf_child_pid = fork();
     if (perf_child_pid < 0)
