@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include "criu_util.h"
 
 void criu_perror(int ret)
@@ -38,6 +39,7 @@ void criu_perror(int ret)
 int set_image_dump_criu(pid_t pid, const char *image_dir)
 {
 	int criu_err = 0;
+    mkdir(image_dir, 0777);
 	int fd = open(image_dir, O_DIRECTORY);
 	if (fd < 0)
 	{

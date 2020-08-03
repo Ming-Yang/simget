@@ -2,6 +2,7 @@
 
 ## Dependency
 libcriu
+[cjson](https://github.com/DaveGamble/cJSON)
 
 ## todo
 - check folder existence

@@ -2,16 +2,18 @@ SRC_DIR = src/
 INC_DIR = include/
 OBJ_DIR = bin/
 
-LD_OPT = -lcriu -lcjson
+LD_OPT = -lcriu
+
+CJSON = ${SRC_DIR}cJSON.c
 
 target: perf_ov_dump perf_ov_restore test
 
 all: perf_ov_fd perf_ov_sig perf_count criu_dump criu_restore perf_ov_dump perf_ov_restore
 
-perf_ov_dump:$(addprefix ${SRC_DIR},perf_ov_dump.c criu_util.c util.c) 
+perf_ov_dump:$(addprefix ${SRC_DIR},perf_ov_dump.c criu_util.c util.c) ${CJSON}
 	gcc -o ${OBJ_DIR}$@ $^ -I${INC_DIR} ${LD_OPT}
 
-perf_ov_restore:$(addprefix ${SRC_DIR},perf_ov_restore.c criu_util.c util.c) 
+perf_ov_restore:$(addprefix ${SRC_DIR},perf_ov_restore.c criu_util.c util.c) ${CJSON}
 	gcc -o ${OBJ_DIR}$@ $^ -I${INC_DIR}  ${LD_OPT}
 
 perf_ov_sig:perf_ov_sig.c test
@@ -33,6 +35,3 @@ test:${SRC_DIR}test.c
 	gcc -o ${OBJ_DIR}$@ -g $^
 	objdump -alDS ${OBJ_DIR}$@ > ${OBJ_DIR}test.s
 
-# .PHONY
-# clean:
-# 	rm

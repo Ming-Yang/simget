@@ -12,7 +12,7 @@ int main()
 
     printf("%d\n", *q);
 
-    for (long long a = 100000000; a > 0; --a)
+    for (long long a = 1000000000; a > 0; --a)
     {
         int x = 0;
         ++x;

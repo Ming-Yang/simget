@@ -3,9 +3,9 @@
 #include <string.h>
 #include <util.h>
 #include <unistd.h>
-#include <cjson/cJSON.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <cJSON.h>
 
 void print_long(long long val)
 {
