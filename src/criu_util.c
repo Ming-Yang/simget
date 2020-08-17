@@ -108,7 +108,7 @@ pid_t image_restore_criu()
 	pid_t pid = criu_restore_child();
     if (pid < 0)
     {
-        perror("restore failed!");
+        fprintf(stderr, "restore failed!\n");
 		exit(-1);
     }
 

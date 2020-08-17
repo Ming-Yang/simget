@@ -8,6 +8,7 @@
 #include <sys/poll.h>
 #include <wait.h>
 #include <stdbool.h>
+#include <cJSON.h>
 #include "perf_event_open.h"
 #include "util.h"
 
