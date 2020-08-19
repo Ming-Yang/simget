@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 
 #ifdef _DEBUG
     printf("get config finish\n");
-    print_dmp_cfg(cfg);
+    print_dump_cfg(cfg);
 #endif
 
     struct perf_event_attr pe;

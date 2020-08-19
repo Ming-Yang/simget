@@ -13,6 +13,7 @@ typedef struct
     char *path_file; //used for execv
     char **argv; //used for execv
     long long ov_insts;
+    int irq_offset;
     int affinity;
     int perf_fd;
     int child_pid;
@@ -25,7 +26,7 @@ typedef struct
 }DumpCfg;
 
 void print_long(long long);
-void print_dmp_cfg(DumpCfg* const);
+void print_dump_cfg(DumpCfg* const);
 DumpCfg *get_cfg_from_json(const char *);
 void set_sched(pid_t, int);
 void redirect_io(DumpCfg *);

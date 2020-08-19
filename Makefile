@@ -28,6 +28,9 @@ perf_ov_fd:perf_ov_fd.c test
 perf_count:$(addprefix ${SRC_DIR},perf_count.c util.c) ${CJSON}
 	gcc -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT}
 
+perf_ov_loop:$(addprefix ${SRC_DIR},perf_ov_loop.c util.c) ${CJSON}
+	gcc -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT}
+
 perf_example:$(addprefix ${SRC_DIR},perf_example.c) 
 	gcc -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT}
 

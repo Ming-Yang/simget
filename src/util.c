@@ -32,7 +32,7 @@ void print_long(long long val)
     printf("\n");
 }
 
-void print_dmp_cfg(DumpCfg *const cfg)
+void print_dump_cfg(DumpCfg *const cfg)
 {
     printf("=================== Dump Config Info ===================\n");
     printf("image dir:%s\n", cfg->image_dir);
@@ -61,6 +61,8 @@ void print_dmp_cfg(DumpCfg *const cfg)
     
     printf("overflow trigger insts:");
     print_long(cfg->process.ov_insts);
+    printf("offset insts caused by irq:");
+    print_long(cfg->process.irq_offset);
     printf("affinity:%d\n", cfg->process.affinity);
     printf("process pid:%d\n", cfg->process.child_pid);
     printf("process fd:%d\n", cfg->process.perf_fd);
@@ -118,6 +120,7 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *process_arg = process_args->child;
     cJSON *process_affinity = cJSON_GetObjectItem(process, "affinity");
     cJSON *process_ov_insts = cJSON_GetObjectItem(process, "ov_insts");
+    cJSON *process_irq_offset = cJSON_GetObjectItem(process, "irq_offset");
     cJSON *process_pid = cJSON_GetObjectItem(process, "pid");
 
     if (image_dir == NULL)
@@ -128,27 +131,27 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (process_path == NULL || process_filename == NULL || process_args == NULL || process_ov_insts == NULL)
         printf("dump-configuration is not satisfied");
 
-    DumpCfg *dmp_cfg = (DumpCfg *)malloc(sizeof(DumpCfg));
-    dmp_cfg->process.args = (char **)calloc(MAX_ARGS, sizeof(char *));
+    DumpCfg *dump_cfg = (DumpCfg *)malloc(sizeof(DumpCfg));
+    dump_cfg->process.args = (char **)calloc(MAX_ARGS, sizeof(char *));
 
-    dmp_cfg->image_dir = image_dir->valuestring;
+    dump_cfg->image_dir = image_dir->valuestring;
 
     if (process_path != NULL)
-        dmp_cfg->process.path = process_path->valuestring;
+        dump_cfg->process.path = process_path->valuestring;
 
     if (process_filename != NULL)
-        dmp_cfg->process.filename = process_filename->valuestring;
+        dump_cfg->process.filename = process_filename->valuestring;
 
     for (int i = 0; process_arg != NULL && i < MAX_ARGS; ++i)
     {
-        dmp_cfg->process.args[i] = process_arg->valuestring;
+        dump_cfg->process.args[i] = process_arg->valuestring;
         process_arg = process_arg->next;
     }
 
     if (input_from_file != NULL)
     {
-        dmp_cfg->process.input_from_file = input_from_file->valueint;
-        if (dmp_cfg->process.input_from_file)
+        dump_cfg->process.input_from_file = input_from_file->valueint;
+        if (dump_cfg->process.input_from_file)
         {
             if (file_in == NULL)
             {
@@ -156,26 +159,29 @@ DumpCfg *get_cfg_from_json(const char *json_path)
             }
             else
             {
-                dmp_cfg->process.file_in = file_in->valuestring;
+                dump_cfg->process.file_in = file_in->valuestring;
             }
         }
     }
 
     if (process_affinity != NULL)
-        dmp_cfg->process.affinity = process_affinity->valueint;
+        dump_cfg->process.affinity = process_affinity->valueint;
     else
-        dmp_cfg->process.affinity = 1;
+        dump_cfg->process.affinity = 1;
 
     if (process_ov_insts != NULL)
-        dmp_cfg->process.ov_insts = atoll(process_ov_insts->valuestring);
+        dump_cfg->process.ov_insts = atoll(process_ov_insts->valuestring);
+
+    if(process_irq_offset != NULL)
+        dump_cfg->process.irq_offset = process_irq_offset->valueint;
 
     if (process_pid != NULL)
-        dmp_cfg->process.child_pid = process_pid->valueint;
+        dump_cfg->process.child_pid = process_pid->valueint;
 
     if (process_path != NULL && process_filename != NULL && process_args != NULL)
-        parse_cfg_path(dmp_cfg);
+        parse_cfg_path(dump_cfg);
 
-    return dmp_cfg;
+    return dump_cfg;
 }
 
 void free_dump_cfg(DumpCfg *cfg)

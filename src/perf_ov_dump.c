@@ -18,7 +18,7 @@ int perf_child_pid;
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
     kill(perf_child_pid, SIGSTOP);
-    waitpid(perf_child_pid, NULL, WCONTINUED);
+    waitpid(perf_child_pid, NULL, WUNTRACED);
     ioctl(perf_open_fd, PERF_EVENT_IOC_DISABLE, 0);
 
     if (info->si_code != POLL_IN) // Only POLL_IN should happen.
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     DumpCfg *cfg = get_cfg_from_json(argv[1]);
 #ifdef _DEBUG
     printf("get config finish\n");
-    print_dmp_cfg(cfg);
+    print_dump_cfg(cfg);
 #endif
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     pe.enable_on_exec = 1;
     // pe.precise_ip = 1;
 
-    pe.sample_period = cfg->process.ov_insts;
+    pe.sample_period = cfg->process.ov_insts - cfg->process.irq_offset;
     pe.wakeup_events = 100;
 
     perf_child_pid = fork();

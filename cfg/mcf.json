@@ -8,6 +8,15 @@
             "NULL"
         ],
         "affinity": 7,
-        "ov_insts": "249000000000"
+        "ov_insts": "100000000",
+        "irq_offset": "0"
+    },
+    "loop":{
+        "out_file":""       
+    },
+    "simpoint":{
+        "bbv_file":"",
+        "point_file":"",
+        "weight_file":""
     }
 }

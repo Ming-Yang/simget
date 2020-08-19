@@ -62,5 +62,5 @@ int main(int argc, char **argv)
     if (process_pid != NULL)
         dmp_cfg->process.child_pid = process_pid->valueint;
     
-    print_dmp_cfg(dmp_cfg);
+    print_dump_cfg(dmp_cfg);
 }
