@@ -18,6 +18,7 @@ int perf_child_pid;
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
     kill(perf_child_pid, SIGSTOP);
+    waitpid(perf_child_pid, NULL, WCONTINUED);
     ioctl(perf_open_fd, PERF_EVENT_IOC_DISABLE, 0);
 
     if (info->si_code != POLL_IN) // Only POLL_IN should happen.
@@ -28,28 +29,37 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 
     image_dump_criu(perf_child_pid);
 
-    long long count;
-    read(perf_open_fd, &count, sizeof(long long));
-    printf("dump image at insts:");
-    print_long(count);
+    long long inst_counts = 0;
+    if (read(perf_open_fd, &inst_counts, sizeof(long long)) == -1)
+    {
+        fprintf(stderr, "read perf event empty!\n");
+    }
+    else
+    {
+        printf("dump image at insts:");
+        print_long(inst_counts);
+    }
 }
 
 int main(int argc, char **argv)
 {
-    if(argc<2)
+    if (argc < 2)
     {
         printf("need dump config json file\n");
         return -1;
     }
-    DumpCfg* cfg = get_cfg_from_json(argv[1]);
+    DumpCfg *cfg = get_cfg_from_json(argv[1]);
+#ifdef _DEBUG
     printf("get config finish\n");
-
+    print_dmp_cfg(cfg);
+#endif
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
     pe.type = PERF_TYPE_HARDWARE;
     pe.size = sizeof(struct perf_event_attr);
     pe.config = PERF_COUNT_HW_INSTRUCTIONS;
     pe.disabled = 1;
+    // pe.inherit = 1;
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
     pe.exclude_idle = 1;
@@ -67,8 +77,11 @@ int main(int argc, char **argv)
     }
     else if (perf_child_pid == 0) //child
     {
+        set_sched(getpid(), cfg->process.affinity);
+        redirect_io(cfg);
+
         raise(SIGSTOP);
-        execv(cfg->process.path, cfg->process.args);
+        execv(cfg->process.path_file, cfg->process.argv);
     }
     else //parent
     {

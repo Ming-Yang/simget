@@ -1,8 +1,9 @@
 {
     "image_dir" : "./dump",
     "process":{
-        "path" : "./coremark.exe",
-        "args" : ["coremark.exe", "0x0", "0x0", "0x66", "3000000", "7", "1", "2000", "NULL"],
-        "ov_insts" : "100000000"
+        "path" : "./",
+        "filename" : "coremark.exe",
+        "args" : ["0x0", "0x0", "0x66", "3000000", "7", "1", "2000", "NULL"],
+        "ov_insts" : "10000000000"
     }
 }

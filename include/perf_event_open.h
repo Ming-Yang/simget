@@ -1,13 +1,8 @@
 #ifndef __PERF_EVENT_OPEN
 #define __PERF_EVENT_OPEN
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <unistd.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <linux/perf_event.h>
-#include <asm/unistd.h>
+#include <sys/syscall.h>
 #include <linux/perf_event.h>
 
 static long

@@ -1,8 +1,10 @@
 {
     "image_dir" : "./dump",
     "process":{
-        "path" : "./test",
-        "args" : ["test", "NULL"],
-        "ov_insts" : "90000000"
+        "path" : "./",
+        "filename" : "test",
+        "args" : ["NULL"],
+        "affinity" : 7,
+        "ov_insts" : "10000000000"
     }
 }

@@ -1,0 +1,13 @@
+{
+    "image_dir": "./dump",
+    "process": {
+        "path": "/home/ming/spec2000-x86/benchspec/CINT2000/181.mcf/run/00000002/",
+        "filename": "mcf_base.Ofast.static",
+        "args": [
+            "inp.in",
+            "NULL"
+        ],
+        "affinity": 7,
+        "ov_insts": "249000000000"
+    }
+}
