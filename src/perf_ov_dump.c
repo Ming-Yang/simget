@@ -101,7 +101,7 @@ int main(int argc, char **argv)
         struct sigaction sa;
         memset(&sa, 0, sizeof(struct sigaction));
         sa.sa_sigaction = perf_event_handler;
-        sa.sa_flags = SA_SIGINFO;
+        sa.sa_flags = SA_SIGINFO | SA_RESTART;
 
         // Setup signal handler
         if (sigaction(SIGIO, &sa, NULL) < 0)

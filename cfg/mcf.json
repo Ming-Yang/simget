@@ -12,11 +12,11 @@
         "irq_offset": "0"
     },
     "loop":{
-        "out_file":""       
+        "out_file":"/home/ming/simget/demo/bb.out.14306_22.log"
     },
     "simpoint":{
         "bbv_file":"",
-        "point_file":"",
-        "weight_file":""
+        "point_file":"/home/ming/simget/demo/bb.out.14306_22.points",
+        "weight_file":"/home/ming/simget/demo/bb.out.14306_22.weights"
     }
 }

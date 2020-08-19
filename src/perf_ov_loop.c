@@ -12,6 +12,7 @@
 #include "util.h"
 
 int perf_inst_fd, perf_cycle_fd;
+FILE* loop_out_file;
 int perf_child_pid;
 long long loop_insts, target_insts;
 int irq_offset;
@@ -40,7 +41,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
     }
     else
     {
-        printf("%lld ", inst_counts - last_insts);
+        fprintf(loop_out_file, "%lld ", inst_counts - last_insts);
         target_insts += loop_insts;
         pe_insts.sample_period = target_insts - irq_offset;
         last_insts = inst_counts;
@@ -54,7 +55,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
     }
     else
     {
-        printf("%lld\n", cycle_counts - last_cycles);
+        fprintf(loop_out_file, "%lld\n", cycle_counts - last_cycles);
         last_cycles = cycle_counts;
     }
 
@@ -74,6 +75,12 @@ int main(int argc, char **argv)
     loop_insts = cfg->process.ov_insts;
     target_insts = loop_insts;
     irq_offset = cfg->process.irq_offset;
+    loop_out_file = fopen(cfg->loop.out_file, "w+");
+    if (loop_out_file < 0)
+    {
+        perror("loop output file open error");
+        loop_out_file = stdout;
+    }
 #ifdef _DEBUG
     printf("get config finish\n");
     print_dump_cfg(cfg);
@@ -177,6 +184,7 @@ int main(int argc, char **argv)
         }
         else
         {
+            fprintf(loop_out_file, "%lld ", inst_counts);
             printf("total insts:");
             print_long(inst_counts);
         }
@@ -187,6 +195,7 @@ int main(int argc, char **argv)
         }
         else
         {
+            fprintf(loop_out_file, "%lld", cycle_counts);
             printf("total cycles:");
             print_long(cycle_counts);
         }

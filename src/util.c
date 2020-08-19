@@ -66,6 +66,8 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("affinity:%d\n", cfg->process.affinity);
     printf("process pid:%d\n", cfg->process.child_pid);
     printf("process fd:%d\n", cfg->process.perf_fd);
+
+    printf("loop output file:%s", cfg->loop.out_file);
     printf("=================== Dump Config Info ===================\n\n");
 }
 
@@ -96,13 +98,13 @@ void parse_cfg_path(DumpCfg *cfg)
 
 DumpCfg *get_cfg_from_json(const char *json_path)
 {
-    char buff[1000];
+    char buff[MAX_JSON_BUFFER];
     int fd = open(json_path, O_RDONLY);
     if (fd < 0)
     {
         perror("json cfg file read failed!");
     }
-    int read_bytes = read(fd, buff, 1000);
+    int read_bytes = read(fd, buff, MAX_JSON_BUFFER);
     if (read_bytes <= 0)
     {
         perror("empty json config file");
@@ -112,6 +114,8 @@ DumpCfg *get_cfg_from_json(const char *json_path)
 
     cJSON *image_dir = cJSON_GetObjectItem(cfg, "image_dir");
     cJSON *process = cJSON_GetObjectItem(cfg, "process");
+    cJSON *loop = cJSON_GetObjectItem(cfg, "loop");
+
     cJSON *process_path = cJSON_GetObjectItem(process, "path");
     cJSON *process_filename = cJSON_GetObjectItem(process, "filename");
     cJSON *process_args = cJSON_GetObjectItem(process, "args");
@@ -122,6 +126,8 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *process_ov_insts = cJSON_GetObjectItem(process, "ov_insts");
     cJSON *process_irq_offset = cJSON_GetObjectItem(process, "irq_offset");
     cJSON *process_pid = cJSON_GetObjectItem(process, "pid");
+
+    cJSON *loop_out_file = cJSON_GetObjectItem(loop, "out_file");
 
     if (image_dir == NULL)
     {
@@ -180,6 +186,9 @@ DumpCfg *get_cfg_from_json(const char *json_path)
 
     if (process_path != NULL && process_filename != NULL && process_args != NULL)
         parse_cfg_path(dump_cfg);
+
+    if(loop_out_file != NULL)
+        dump_cfg->loop.out_file = loop_out_file->valuestring;
 
     return dump_cfg;
 }

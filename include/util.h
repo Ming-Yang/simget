@@ -2,6 +2,7 @@
 #define __UTIL_H
 
 #define MAX_ARGS 128
+#define MAX_JSON_BUFFER 10000
 
 typedef struct
 {
@@ -19,10 +20,17 @@ typedef struct
     int child_pid;
 }PerfCfg;
 
+typedef struct 
+{
+    char *out_file;
+}LoopCfg;
+
+
 typedef struct
 {
     char *image_dir;
     PerfCfg process;
+    LoopCfg loop;
 }DumpCfg;
 
 void print_long(long long);
