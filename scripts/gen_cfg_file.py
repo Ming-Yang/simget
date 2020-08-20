@@ -129,9 +129,9 @@ def run_simpoint(cfg):
         print("no folder exists!")
         return
     os.chdir(cfg["dir_out"])
-    for dirname in os.listdir("./"):
+    for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
         os.chdir(dirname)
-        for inputs in os.listdir("./"):
+        for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
             simpoint_full_cmd = simpoint_cmd(
                 cfg, "valgrind.bb", simpoint_cfg_prefix+"sim.points", simpoint_cfg_prefix+"sim.weights")
@@ -208,7 +208,11 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
 
 spec2k_int_cmd_list = gen_run_cmd_list(spec2k_int, int_path)
 spec2k_fp_cmd_list = gen_run_cmd_list(spec2k_fp, fp_path)
-gen_perf_loop_cfg_file(spec2k_int_cmd_list, cfg)
-gen_perf_loop_cfg_file(spec2k_fp_cmd_list, cfg)
+for var in spec2k_int_cmd_list:
+    print(var)
+for var in spec2k_fp_cmd_list:
+    print(var)
+# gen_perf_loop_cfg_file(spec2k_int_cmd_list, cfg)
+# gen_perf_loop_cfg_file(spec2k_fp_cmd_list, cfg)
 # run_valgrind(spec2k_int_cmd_list, cfg)
 # run_simpoint(cfg)

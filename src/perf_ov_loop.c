@@ -199,7 +199,7 @@ int main(int argc, char **argv)
             printf("total cycles:");
             print_long(cycle_counts);
         }
-        printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n")
+        printf("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
         close(perf_inst_fd);
     }
 }

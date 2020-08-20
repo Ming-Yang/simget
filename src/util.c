@@ -42,23 +42,20 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("process argv:");
     for (int i = 0;; ++i)
     {
-        printf("%s ", cfg->process.args[i]);
-        if (!strncmp(cfg->process.args[i], "NULL", 4)) // == "NULL" is incorrect!!!
-        {
-            printf("\n");
+        if (cfg->process.argv[i] == NULL)
             break;
-        }
+        printf("%s ", cfg->process.argv[i]);
     }
     if (cfg->process.input_from_file)
     {
-        if(cfg->process.file_in != NULL)
+        if (cfg->process.file_in != NULL)
             printf("input from file:%s\n", cfg->process.file_in);
     }
     else
     {
         printf("no input file\n");
     }
-    
+
     printf("overflow trigger insts:");
     print_long(cfg->process.ov_insts);
     printf("offset insts caused by irq:");
@@ -68,7 +65,7 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("process fd:%d\n", cfg->process.perf_fd);
 
     printf("loop output file:%s\n", cfg->loop.out_file);
-    printf("=================== Dump Config Info ===================\n\n");
+    printf("=================== Dump Config Info ===================\n");
 }
 
 void parse_cfg_path(DumpCfg *cfg)
@@ -88,10 +85,8 @@ void parse_cfg_path(DumpCfg *cfg)
     for (int i = 0;; ++i)
     {
         argv[i + 1] = cfg->process.args[i];
-        if (!strncmp(cfg->process.args[i], "NULL", 4)) // == "NULL" is incorrect!!!
-        {
+        if (cfg->process.args[i] == NULL)
             break;
-        }
     }
     cfg->process.argv = argv;
 }
@@ -150,6 +145,8 @@ DumpCfg *get_cfg_from_json(const char *json_path)
 
     for (int i = 0; process_arg != NULL && i < MAX_ARGS; ++i)
     {
+        if (!strncmp(process_arg->valuestring, "NULL", 4)) // == "NULL" is incorrect!!!
+            break;
         dump_cfg->process.args[i] = process_arg->valuestring;
         process_arg = process_arg->next;
     }
@@ -178,7 +175,7 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (process_ov_insts != NULL)
         dump_cfg->process.ov_insts = atoll(process_ov_insts->valuestring);
 
-    if(process_irq_offset != NULL)
+    if (process_irq_offset != NULL)
         dump_cfg->process.irq_offset = process_irq_offset->valueint;
 
     if (process_pid != NULL)
@@ -187,7 +184,7 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (process_path != NULL && process_filename != NULL && process_args != NULL)
         parse_cfg_path(dump_cfg);
 
-    if(loop_out_file != NULL)
+    if (loop_out_file != NULL)
         dump_cfg->loop.out_file = loop_out_file->valuestring;
 
     return dump_cfg;

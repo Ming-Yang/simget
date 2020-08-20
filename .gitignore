@@ -1,4 +1,5 @@
 /bin
 /demo
+**/__pycache__/
 *.out
 .vscode

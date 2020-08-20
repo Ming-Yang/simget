@@ -2,7 +2,7 @@
 #define __UTIL_H
 
 #define MAX_ARGS 128
-#define MAX_JSON_BUFFER 10000
+#define MAX_JSON_BUFFER 100000
 
 typedef struct
 {
