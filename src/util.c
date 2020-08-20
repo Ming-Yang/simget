@@ -67,7 +67,7 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("process pid:%d\n", cfg->process.child_pid);
     printf("process fd:%d\n", cfg->process.perf_fd);
 
-    printf("loop output file:%s", cfg->loop.out_file);
+    printf("loop output file:%s\n", cfg->loop.out_file);
     printf("=================== Dump Config Info ===================\n\n");
 }
 

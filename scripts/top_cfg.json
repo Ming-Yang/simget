@@ -1,12 +1,12 @@
 {
+    "simget_home":"/home/ming/simget",
     "spec_version": 2000,
     "spec_home": "/home/ming/spec2000-x86/",
     "spec_run": "00000002",
     "dir_out": "/home/ming/loop_check_simpoint",
     "interval_size": 100000000,
     "valgrind": {
-        "bin_path": "",
-        "affinity": 7
+        "bin_path": ""
     },
     "simpoint": {
         "bin_path": "",
@@ -14,5 +14,10 @@
         "bbv_file": "",
         "point_file": "/home/ming/simget/demo/bb.out.14306_22.points",
         "weight_file": "/home/ming/simget/demo/bb.out.14306_22.weights"
+    },
+    "perf_config": {
+        "affinity": 7,
+        "dump_idx": 1,
+        "irq_offset": 0
     }
 }
