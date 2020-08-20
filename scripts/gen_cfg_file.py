@@ -178,6 +178,7 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
             process_cfg["affinity"] = cfg["perf_config"]["affinity"]
             process_cfg["ov_insts"] = str(cfg["interval_size"])
             process_cfg["irq_offset"] = cfg["perf_config"]["irq_offset"]
+            process_cfg["warmup_ratio"] = cfg["warmup_ratio"]
 
             loop_cfg = {}
             loop_cfg["out_file"] = os.path.join(
@@ -188,20 +189,28 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
                 cur_dir, simpoint_cfg_prefix+"sim.points")
             simpoint_cfg["weight_file"] = os.path.join(
                 cur_dir, simpoint_cfg_prefix+"sim.weights")
+
+            k = 0
+            point_weight_pair = []
+            points = []
+            weights = []
             with open(os.path.join(cur_dir, simpoint_cfg_prefix+"sim.points")) as points_file:
-                k = 0
-                point = []
                 for line in points_file.readlines():
-                    k+=1
-                    point.append(int(line.split(' ')[0]))
-                simpoint_cfg["k"] = k
-                simpoint_cfg["points"] = point
+                    point_weight_pair.append([int(line.split(' ')[0]), ])
 
             with open(os.path.join(cur_dir, simpoint_cfg_prefix+"sim.weights")) as weights_file:
-                weight = []
                 for line in weights_file.readlines():
-                    weight.append(float(line.split(' ')[0]))
-                simpoint_cfg["weights"] = weight
+                    point_weight_pair[k].append(float(line.split(' ')[0]))
+                    k += 1
+            
+            point_weight_pair.sort(key=lambda x: x[0])
+            for pair in point_weight_pair:
+                points.append(pair[0])
+                weights.append(pair[1])
+
+            simpoint_cfg["k"] = k
+            simpoint_cfg["points"] = points
+            simpoint_cfg["weights"] = weights
 
             perf_cfg = {}
             if os.path.exists(simpoint_cfg_prefix + "dump" + str(cfg["perf_config"]["dump_idx"])) == False:
