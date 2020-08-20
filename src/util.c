@@ -65,6 +65,13 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("process fd:%d\n", cfg->process.perf_fd);
 
     printf("loop output file:%s\n", cfg->loop.out_file);
+
+    printf("simpoints:%d\n", cfg->simpoint.k);
+    for (int i = 0; i < cfg->simpoint.k; ++i)
+    {
+        printf("%d,%f\n", cfg->simpoint.points[i], cfg->simpoint.weights[i]);
+    }
+
     printf("=================== Dump Config Info ===================\n");
 }
 
@@ -110,6 +117,7 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *image_dir = cJSON_GetObjectItem(cfg, "image_dir");
     cJSON *process = cJSON_GetObjectItem(cfg, "process");
     cJSON *loop = cJSON_GetObjectItem(cfg, "loop");
+    cJSON *simpoint = cJSON_GetObjectItem(cfg, "simpoint");
 
     cJSON *process_path = cJSON_GetObjectItem(process, "path");
     cJSON *process_filename = cJSON_GetObjectItem(process, "filename");
@@ -123,6 +131,12 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *process_pid = cJSON_GetObjectItem(process, "pid");
 
     cJSON *loop_out_file = cJSON_GetObjectItem(loop, "out_file");
+
+    cJSON *simpoint_k = cJSON_GetObjectItem(simpoint, "k");
+    cJSON *simpoint_point = cJSON_GetObjectItem(simpoint, "point");
+    cJSON *simpoint_point_item = simpoint_point->child;
+    cJSON *simpoint_weight = cJSON_GetObjectItem(simpoint, "weight");
+    cJSON *simpoint_weight_item = simpoint_weight->child;
 
     if (image_dir == NULL)
     {
@@ -186,6 +200,27 @@ DumpCfg *get_cfg_from_json(const char *json_path)
 
     if (loop_out_file != NULL)
         dump_cfg->loop.out_file = loop_out_file->valuestring;
+
+    if (simpoint_k != NULL)
+    {
+        dump_cfg->simpoint.k = simpoint_k->valueint;
+        int *points = (int *)calloc(dump_cfg->simpoint.k, sizeof(int));
+        double *weights = (double *)calloc(dump_cfg->simpoint.k, sizeof(double));
+        for (int i = 0; i < dump_cfg->simpoint.k; ++i)
+        {
+            points[i] = simpoint_point_item->valueint;
+            weights[i] = simpoint_weight_item->valuedouble;
+
+            simpoint_point_item = simpoint_point_item->next;
+            simpoint_weight_item = simpoint_weight_item->next;
+        }
+        dump_cfg->simpoint.points = points;
+        dump_cfg->simpoint.weights = weights;
+    }
+    else
+    {
+        dump_cfg->simpoint.k = 0;
+    }
 
     return dump_cfg;
 }

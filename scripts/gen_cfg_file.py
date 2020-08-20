@@ -173,7 +173,8 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
             process_cfg["args"] = cmd["run"].strip().split(" ")[1:] + ["NULL"]
             if cmd["input_file"] != None:
                 process_cfg["input_from_file"] = 1
-                process_cfg["file_in"] = os.path.join(cmd["path"], cmd["input_file"].strip())
+                process_cfg["file_in"] = os.path.join(
+                    cmd["path"], cmd["input_file"].strip())
             process_cfg["affinity"] = cfg["perf_config"]["affinity"]
             process_cfg["ov_insts"] = str(cfg["interval_size"])
             process_cfg["irq_offset"] = cfg["perf_config"]["irq_offset"]
@@ -187,6 +188,20 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
                 cur_dir, simpoint_cfg_prefix+"sim.points")
             simpoint_cfg["weight_file"] = os.path.join(
                 cur_dir, simpoint_cfg_prefix+"sim.weights")
+            with open(os.path.join(cur_dir, simpoint_cfg_prefix+"sim.points")) as points_file:
+                k = 0
+                point = []
+                for line in points_file.readlines():
+                    k+=1
+                    point.append(int(line.split(' ')[0]))
+                simpoint_cfg["k"] = k
+                simpoint_cfg["points"] = point
+
+            with open(os.path.join(cur_dir, simpoint_cfg_prefix+"sim.weights")) as weights_file:
+                weight = []
+                for line in weights_file.readlines():
+                    weight.append(float(line.split(' ')[0]))
+                simpoint_cfg["weights"] = weight
 
             perf_cfg = {}
             if os.path.exists(simpoint_cfg_prefix + "dump" + str(cfg["perf_config"]["dump_idx"])) == False:
@@ -208,11 +223,7 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
 
 spec2k_int_cmd_list = gen_run_cmd_list(spec2k_int, int_path)
 spec2k_fp_cmd_list = gen_run_cmd_list(spec2k_fp, fp_path)
-for var in spec2k_int_cmd_list:
-    print(var)
-for var in spec2k_fp_cmd_list:
-    print(var)
-# gen_perf_loop_cfg_file(spec2k_int_cmd_list, cfg)
-# gen_perf_loop_cfg_file(spec2k_fp_cmd_list, cfg)
+gen_perf_loop_cfg_file(spec2k_int_cmd_list, cfg)
+gen_perf_loop_cfg_file(spec2k_fp_cmd_list, cfg)
 # run_valgrind(spec2k_int_cmd_list, cfg)
 # run_simpoint(cfg)

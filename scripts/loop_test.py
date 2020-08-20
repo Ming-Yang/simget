@@ -71,5 +71,5 @@ def result_calc(cfg):
         print("-----------------", file=collect_file)
         os.chdir("..")
 
-
+run_loop_test(cfg)
 result_calc(cfg)

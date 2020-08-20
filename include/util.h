@@ -25,12 +25,20 @@ typedef struct
     char *out_file;
 }LoopCfg;
 
+typedef struct 
+{
+    int k;
+    int *points;
+    double *weights;
+}SimpointCfg;
+
 
 typedef struct
 {
     char *image_dir;
     PerfCfg process;
     LoopCfg loop;
+    SimpointCfg simpoint;
 }DumpCfg;
 
 void print_long(long long);
