@@ -52,8 +52,8 @@ int main(int argc, char **argv)
     kill(pid, SIGCONT);
     waitpid(pid, NULL, 0);
 #ifdef _DEBUG
-    long long inst_counts = 0;
-    if (read(perf_open_fd, &inst_counts, sizeof(long long)) == -1)
+    long inst_counts = 0;
+    if (read(perf_open_fd, &inst_counts, sizeof(long)) == -1)
     {
         fprintf(stderr, "read perf event empty!\n");
     }

@@ -29,8 +29,8 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 
     image_dump_criu(perf_child_pid);
 
-    long long inst_counts = 0;
-    if (read(perf_open_fd, &inst_counts, sizeof(long long)) == -1)
+    long inst_counts = 0;
+    if (read(perf_open_fd, &inst_counts, sizeof(long)) == -1)
     {
         fprintf(stderr, "read perf event empty!\n");
     }

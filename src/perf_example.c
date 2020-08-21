@@ -29,9 +29,9 @@ int
 main(int argc, char **argv)
 {
     struct perf_event_attr pe;
-    long long count;
+    long count;
     int fd;
-    long long cc[10] = {0};
+    long cc[10] = {0};
 #if 1
     cpu_set_t set;
     CPU_ZERO(&set);
@@ -69,9 +69,9 @@ main(int argc, char **argv)
 
     ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
     // syscall(5334);
-    read(fd, &count, sizeof(long long));
+    read(fd, &count, sizeof(long));
 
-    printf("Used %lld instructions\n", count);
+    printf("Used %ld instructions\n", count);
 
     close(fd);
 }

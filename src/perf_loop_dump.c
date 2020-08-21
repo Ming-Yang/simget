@@ -8,60 +8,57 @@
 #include <sys/poll.h>
 #include <wait.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include "perf_event_open.h"
 #include "util.h"
+#include "criu_util.h"
 
+DumpCfg *cfg;
 int perf_inst_fd, perf_cycle_fd;
-FILE* loop_out_file;
 int perf_child_pid;
-long loop_insts, target_insts;
-int irq_offset;
+long target_insts;
 struct perf_event_attr pe_insts, pe_cycles;
 
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
+    static int ov_times = 1;
+    static int points_idx = 0;
     static long last_insts = 0, last_cycles = 0;
-    kill(perf_child_pid, SIGSTOP);
-    waitpid(perf_child_pid, NULL, WUNTRACED);
-    ioctl(perf_inst_fd, PERF_EVENT_IOC_DISABLE, 0);
-    ioctl(perf_cycle_fd, PERF_EVENT_IOC_DISABLE, 0);
 
-    if (info->si_code != POLL_IN) // Only POLL_IN should happen.
+    if (ov_times == cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio && points_idx < cfg->simpoint.k)
     {
-        perror("wrong signal\n");
-        exit(-1);
-    }
+        kill(perf_child_pid, SIGSTOP);
+        waitpid(perf_child_pid, NULL, WUNTRACED);
+        ioctl(perf_inst_fd, PERF_EVENT_IOC_DISABLE, 0);
+        ioctl(perf_cycle_fd, PERF_EVENT_IOC_DISABLE, 0);
 
-    long inst_counts = 0, cycle_counts = 0;
-    if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
-    {
-        fprintf(stderr, "read perf inst empty!\n");
-        kill(perf_child_pid, SIGTERM);
-        exit(-1);
-    }
-    else
-    {
-        fprintf(loop_out_file, "%ld ", inst_counts - last_insts);
-        target_insts += loop_insts;
-        pe_insts.sample_period = target_insts - irq_offset;
-        last_insts = inst_counts;
-    }
+        if (info->si_code != POLL_IN) // Only POLL_IN should happen.
+        {
+            perror("wrong signal\n");
+            exit(-1);
+        }
 
-    if (read(perf_cycle_fd, &cycle_counts, sizeof(long)) == -1)
-    {
-        fprintf(stderr, "read perf cycle empty!\n");
-        kill(perf_child_pid, SIGTERM);
-        exit(-1);
-    }
-    else
-    {
-        fprintf(loop_out_file, "%ld\n", cycle_counts - last_cycles);
-        last_cycles = cycle_counts;
-    }
+        ++points_idx;
+        long inst_counts = 0;
+        if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
+        {
+            fprintf(stderr, "read perf inst empty!\n");
+            kill(perf_child_pid, SIGTERM);
+            exit(-1);
+        }
+        else
+        {
+            printf("%d actual insts:%ld\n====================\n", points_idx, inst_counts);
+            set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)));
+            image_dump_criu(perf_child_pid);
+            last_insts = inst_counts;
+        }
+        ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
+        ioctl(perf_cycle_fd, PERF_EVENT_IOC_ENABLE, 0);
 
-    ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
-    ioctl(perf_cycle_fd, PERF_EVENT_IOC_ENABLE, 0);
-    kill(perf_child_pid, SIGCONT);
+        kill(perf_child_pid, SIGCONT);
+    }
+    ++ov_times;
 }
 
 int main(int argc, char **argv)
@@ -71,15 +68,11 @@ int main(int argc, char **argv)
         printf("need dump config json file\n");
         return -1;
     }
-    DumpCfg *cfg = get_cfg_from_json(argv[1]);
-    loop_insts = cfg->process.ov_insts;
-    target_insts = loop_insts;
-    irq_offset = cfg->process.irq_offset;
-    loop_out_file = fopen(cfg->loop.out_file, "w+");
-    if (loop_out_file < 0)
+    cfg = get_cfg_from_json(argv[1]);
+    if (cfg->simpoint.k == 0)
     {
-        perror("loop output file open error");
-        loop_out_file = stdout;
+        fprintf(stderr, "no simpoint points\n");
+        return -1;
     }
 #ifdef _DEBUG
     printf("get config finish\n");
@@ -167,16 +160,13 @@ int main(int argc, char **argv)
         fcntl(perf_inst_fd, __F_SETSIG, SIGIO);
         fcntl(perf_inst_fd, F_SETOWN, getpid());
 
-        // init criu
-        printf("config finish, resume child process...\n");
-
         // resume child process
         ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
         ioctl(perf_cycle_fd, PERF_EVENT_IOC_RESET, 0);
         kill(perf_child_pid, SIGCONT);
 
         waitpid(perf_child_pid, NULL, 0);
-
+        printf("finish run\n");
         long inst_counts = 0, cycle_counts = 0;
         if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
         {
@@ -184,7 +174,6 @@ int main(int argc, char **argv)
         }
         else
         {
-            fprintf(loop_out_file, "%ld ", inst_counts);
             printf("total insts:");
             print_long(inst_counts);
         }
@@ -195,7 +184,6 @@ int main(int argc, char **argv)
         }
         else
         {
-            fprintf(loop_out_file, "%ld", cycle_counts);
             printf("total cycles:");
             print_long(cycle_counts);
         }

@@ -73,8 +73,8 @@ int main(int argc, char **argv)
         waitpid(perf_child_pid, NULL, 0);
         ioctl(perf_open_fd, PERF_EVENT_IOC_DISABLE, 0);
 
-        long long inst_counts = 0;
-        if (read(perf_open_fd, &inst_counts, sizeof(long long)) == -1)
+        long inst_counts = 0;
+        if (read(perf_open_fd, &inst_counts, sizeof(long)) == -1)
         {
             fprintf(stderr, "read perf event empty!\n");
         }

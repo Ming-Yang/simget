@@ -2,14 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <util.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sched.h>
 #include <sys/types.h>
-#include <cJSON.h>
+#include "cJSON.h"
 
-void print_long(long long val)
+void print_long(long val)
 {
     int val_table[20];
     int table_eles = 0;
@@ -128,14 +129,15 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *process_affinity = cJSON_GetObjectItem(process, "affinity");
     cJSON *process_ov_insts = cJSON_GetObjectItem(process, "ov_insts");
     cJSON *process_irq_offset = cJSON_GetObjectItem(process, "irq_offset");
+    cJSON *process_warmup_ratio = cJSON_GetObjectItem(process, "warmup_ratio");
     cJSON *process_pid = cJSON_GetObjectItem(process, "pid");
 
     cJSON *loop_out_file = cJSON_GetObjectItem(loop, "out_file");
 
     cJSON *simpoint_k = cJSON_GetObjectItem(simpoint, "k");
-    cJSON *simpoint_point = cJSON_GetObjectItem(simpoint, "point");
+    cJSON *simpoint_point = cJSON_GetObjectItem(simpoint, "points");
     cJSON *simpoint_point_item = simpoint_point->child;
-    cJSON *simpoint_weight = cJSON_GetObjectItem(simpoint, "weight");
+    cJSON *simpoint_weight = cJSON_GetObjectItem(simpoint, "weights");
     cJSON *simpoint_weight_item = simpoint_weight->child;
 
     if (image_dir == NULL)
@@ -192,6 +194,9 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (process_irq_offset != NULL)
         dump_cfg->process.irq_offset = process_irq_offset->valueint;
 
+    if (process_warmup_ratio != NULL)
+        dump_cfg->process.warmup_ratio = process_warmup_ratio->valuedouble;
+
     if (process_pid != NULL)
         dump_cfg->process.child_pid = process_pid->valueint;
 
@@ -204,18 +209,21 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (simpoint_k != NULL)
     {
         dump_cfg->simpoint.k = simpoint_k->valueint;
-        int *points = (int *)calloc(dump_cfg->simpoint.k, sizeof(int));
-        double *weights = (double *)calloc(dump_cfg->simpoint.k, sizeof(double));
-        for (int i = 0; i < dump_cfg->simpoint.k; ++i)
+        if (dump_cfg->simpoint.k != 0)
         {
-            points[i] = simpoint_point_item->valueint;
-            weights[i] = simpoint_weight_item->valuedouble;
+            int *points = (int *)calloc(dump_cfg->simpoint.k, sizeof(int));
+            double *weights = (double *)calloc(dump_cfg->simpoint.k, sizeof(double));
+            for (int i = 0; i < dump_cfg->simpoint.k; ++i)
+            {
+                points[i] = simpoint_point_item->valueint;
+                weights[i] = simpoint_weight_item->valuedouble;
 
-            simpoint_point_item = simpoint_point_item->next;
-            simpoint_weight_item = simpoint_weight_item->next;
+                simpoint_point_item = simpoint_point_item->next;
+                simpoint_weight_item = simpoint_weight_item->next;
+            }
+            dump_cfg->simpoint.points = points;
+            dump_cfg->simpoint.weights = weights;
         }
-        dump_cfg->simpoint.points = points;
-        dump_cfg->simpoint.weights = weights;
     }
     else
     {
@@ -290,4 +298,46 @@ void redirect_io(DumpCfg *cfg)
 
     free(out_file);
     free(err_file);
+}
+
+char *long2string(long num)
+{
+    int n = 1;
+    long val = num;
+    for (; val > 0; ++n)
+        val /= n;
+    char *str = (char *)calloc(n, sizeof(n));
+    sprintf(str, "%ld", num);
+    return str;
+}
+
+char *nstrjoin(int num, ...)
+{
+    va_list args;
+    size_t len = 0;
+    const char *arg_ele = NULL;
+
+    va_start(args, num);
+    for (int i = 0; i < num; ++i)
+    {
+        arg_ele = va_arg(args, const char *);
+        len += strlen(arg_ele);
+    }
+    va_end(args);
+
+    char *s = (char *)calloc(len + 1, sizeof(char));
+    char *p = s;
+
+    va_start(args, num);
+    for (int i = 0; i < num; ++i)
+    {
+        arg_ele = va_arg(args, const char *);
+        int l = strlen(arg_ele);
+        strncpy(p, arg_ele, l);
+        p += l;
+    }
+    va_end(args);
+
+    *p = '\0';
+    return s;
 }
