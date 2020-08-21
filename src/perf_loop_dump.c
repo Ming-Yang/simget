@@ -49,7 +49,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
         else
         {
             printf("%d actual insts:%ld\n====================\n", points_idx, inst_counts);
-            set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)));
+            set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), true);
             image_dump_criu(perf_child_pid);
             last_insts = inst_counts;
         }

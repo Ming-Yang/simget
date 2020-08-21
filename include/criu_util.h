@@ -5,7 +5,7 @@
 
 void criu_perror(int);
 
-int set_image_dump_criu(pid_t pid, const char *);
+int set_image_dump_criu(pid_t pid, const char *, bool);
 int set_image_restore_criu(const char *);
 int image_dump_criu(pid_t);
 pid_t image_restore_criu();

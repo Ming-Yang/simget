@@ -117,7 +117,7 @@ int main(int argc, char **argv)
         fcntl(perf_open_fd, F_SETOWN, getpid());
 
         // init criu
-        set_image_dump_criu(perf_child_pid, cfg->image_dir);
+        set_image_dump_criu(perf_child_pid, cfg->image_dir, false);
         printf("config finish, resume child process...\n");
 
         // resume child process

@@ -36,7 +36,7 @@ void criu_perror(int ret)
 	}
 }
 
-int set_image_dump_criu(pid_t pid, const char *image_dir)
+int set_image_dump_criu(pid_t pid, const char *image_dir, bool cont)
 {
 	int criu_err = 0;
     mkdir(image_dir, 0777);
@@ -61,7 +61,7 @@ int set_image_dump_criu(pid_t pid, const char *image_dir)
 	criu_set_log_level(4);
 	criu_set_images_dir_fd(fd);
 	criu_set_shell_job(true);
-	criu_set_leave_running(true);
+	criu_set_leave_running(cont);
 
 	return 0;
 }
