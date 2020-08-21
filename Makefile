@@ -19,6 +19,9 @@ perf_ov_dump:$(addprefix ${SRC_DIR},perf_ov_dump.c criu_util.c util.c) ${CJSON}
 perf_ov_restore:$(addprefix ${SRC_DIR},perf_ov_restore.c criu_util.c util.c) ${CJSON}
 	gcc -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT} ${LD_OPT}
 
+perf_restore_cnt:$(addprefix ${SRC_DIR},perf_restore_cnt.c criu_util.c util.c) ${CJSON}
+	gcc -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT} ${LD_OPT}
+
 perf_ov_sig:perf_ov_sig.c test
 	gcc -o $@ $^
 
