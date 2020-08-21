@@ -62,8 +62,6 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("offset insts caused by irq:");
     print_long(cfg->process.irq_offset);
     printf("affinity:%d\n", cfg->process.affinity);
-    printf("process pid:%d\n", cfg->process.child_pid);
-    printf("process fd:%d\n", cfg->process.perf_fd);
 
     printf("loop output file:%s\n", cfg->loop.out_file);
 
@@ -135,6 +133,7 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *loop_out_file = cJSON_GetObjectItem(loop, "out_file");
 
     cJSON *simpoint_k = cJSON_GetObjectItem(simpoint, "k");
+    cJSON *simpoint_current = cJSON_GetObjectItem(simpoint, "current");
     cJSON *simpoint_point = cJSON_GetObjectItem(simpoint, "points");
     cJSON *simpoint_point_item = simpoint_point->child;
     cJSON *simpoint_weight = cJSON_GetObjectItem(simpoint, "weights");
@@ -197,9 +196,6 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (process_warmup_ratio != NULL)
         dump_cfg->process.warmup_ratio = process_warmup_ratio->valuedouble;
 
-    if (process_pid != NULL)
-        dump_cfg->process.child_pid = process_pid->valueint;
-
     if (process_path != NULL && process_filename != NULL && process_args != NULL)
         parse_cfg_path(dump_cfg);
 
@@ -229,6 +225,8 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     {
         dump_cfg->simpoint.k = 0;
     }
+    if (simpoint_current != NULL)
+        dump_cfg->simpoint.current = simpoint_current->valueint;
 
     return dump_cfg;
 }

@@ -18,8 +18,6 @@ typedef struct
     int irq_offset;
     double warmup_ratio;
     int affinity;
-    int perf_fd;
-    int child_pid;
 } PerfCfg;
 
 typedef struct
@@ -30,6 +28,7 @@ typedef struct
 typedef struct
 {
     int k;
+    int current;
     int *points;
     double *weights;
 } SimpointCfg;

@@ -122,7 +122,6 @@ int main(int argc, char **argv)
     else //parent
     {
         waitpid(perf_child_pid, NULL, WUNTRACED);
-        cfg->process.child_pid = perf_child_pid;
         perf_inst_fd = perf_event_open(&pe_insts, perf_child_pid, -1, -1, 0);
         if (perf_inst_fd == -1)
         {
@@ -130,7 +129,6 @@ int main(int argc, char **argv)
             kill(perf_child_pid, SIGTERM);
             return -1;
         }
-        cfg->process.perf_fd = perf_inst_fd;
 
         perf_cycle_fd = perf_event_open(&pe_cycles, perf_child_pid, -1, -1, 0);
         if (perf_cycle_fd == -1)
