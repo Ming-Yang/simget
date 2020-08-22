@@ -4,7 +4,7 @@ import os
 import subprocess
 from multiprocessing import Pool
 from multiprocessing import cpu_count
-
+user_test_list = ["177.mesa"]
 
 def criu_dump_all(cfg, run=False):
     if os.path.exists(cfg["dir_out"]) == False:
@@ -14,6 +14,8 @@ def criu_dump_all(cfg, run=False):
         'M_max'+str(cfg["simpoint"]["maxK"])+"_"
     os.chdir(cfg["dir_out"])
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
+        if dirname not in user_test_list:
+            continue
         os.chdir(dirname)
         for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
@@ -49,7 +51,6 @@ def simpoint_calc_criu(cfg, top_cfg, run=False):
                 min_abs = abs(target-d)
                 target_dir = d
 
-        # print(path_dir, target_dir)
         o_cfg["image_dir"] = os.path.join(cfg["image_dir"], str(target_dir))
         with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
             f.write(json.dumps(o_cfg, indent=4))

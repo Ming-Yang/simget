@@ -55,7 +55,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
         printf("%ld\n", cycle_counts);
     }
 
-    kill(perf_child_pid, SIGKILL);// SIGTERM cannot be caught by parrent wait()
+    kill(perf_child_pid, SIGKILL); // SIGTERM cannot be caught by parrent wait()
 }
 
 static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
@@ -174,6 +174,8 @@ int main(int argc, char **argv)
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
 
+    if (cfg->simpoint.points[cfg->simpoint.current] - (int)cfg->process.warmup_ratio <= 0)
+        pe.sample_period = cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.irq_offset;
     pe.sample_period = cfg->process.ov_insts * (int)cfg->process.warmup_ratio - cfg->process.irq_offset - dump_offset;
     pe.wakeup_events = 100;
     perf_warmup_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);

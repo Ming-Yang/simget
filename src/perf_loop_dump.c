@@ -16,13 +16,13 @@
 DumpCfg *cfg;
 int perf_inst_fd, perf_cycle_fd;
 int perf_child_pid;
+int points_idx;
 long target_insts;
 struct perf_event_attr pe_insts, pe_cycles;
 
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
     static int ov_times = 1;
-    static int points_idx = 0;
     static long last_insts = 0, last_cycles = 0;
 
     if (ov_times == cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio && points_idx < cfg->simpoint.k)
@@ -78,6 +78,14 @@ int main(int argc, char **argv)
     printf("get config finish\n");
     print_dump_cfg(cfg);
 #endif
+    int start = 0;
+    for (; start < cfg->simpoint.k; ++start)
+    {
+        if (cfg->simpoint.points[start] - (int)cfg->process.warmup_ratio > 0)
+            break;
+    }
+    points_idx = start;
+
     memset(&pe_insts, 0, sizeof(struct perf_event_attr));
     pe_insts.type = PERF_TYPE_HARDWARE;
     pe_insts.size = sizeof(struct perf_event_attr);
@@ -158,13 +166,20 @@ int main(int argc, char **argv)
         fcntl(perf_inst_fd, __F_SETSIG, SIGIO);
         fcntl(perf_inst_fd, F_SETOWN, getpid());
 
+        if (points_idx > 0)
+        {
+            printf("first %d actual insts:%d\n====================\n", points_idx, 0);
+            set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
+            image_dump_criu(perf_child_pid);
+        }
+
         // resume child process
         ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
         ioctl(perf_cycle_fd, PERF_EVENT_IOC_RESET, 0);
         kill(perf_child_pid, SIGCONT);
 
         waitpid(perf_child_pid, NULL, 0);
-        printf("finish run\n");
+        printf("finish loop dump\n");
         long inst_counts = 0, cycle_counts = 0;
         if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
         {
