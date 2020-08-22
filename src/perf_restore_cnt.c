@@ -40,6 +40,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
     else
     {
         fprintf(restore_out_file, "%ld ", inst_counts);
+        printf("%ld ", inst_counts);
     }
 
     if (read(perf_cycle_fd, &cycle_counts, sizeof(long)) == -1)
@@ -51,6 +52,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
     else
     {
         fprintf(restore_out_file, "%ld\n", cycle_counts);
+        printf("%ld\n", cycle_counts);
     }
 
     kill(perf_child_pid, SIGKILL);// SIGTERM cannot be caught by parrent wait()
@@ -160,7 +162,7 @@ int main(int argc, char **argv)
     long dump_offset = get_insts_from_dir_name(cfg->image_dir) - (cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.ov_insts * (int)cfg->process.warmup_ratio);
     perf_child_pid = image_restore_criu();
     set_sched(perf_child_pid, cfg->process.affinity);
-    printf("restore child pid:%d\n", perf_child_pid);
+    // printf("restore child pid:%d\n", perf_child_pid);
 
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
