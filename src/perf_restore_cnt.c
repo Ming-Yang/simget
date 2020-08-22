@@ -53,9 +53,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
         fprintf(restore_out_file, "%ld\n", cycle_counts);
     }
 
-    ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
-    ioctl(perf_cycle_fd, PERF_EVENT_IOC_ENABLE, 0);
-    kill(perf_child_pid, SIGTERM);
+    kill(perf_child_pid, SIGKILL);// SIGTERM cannot be caught by parrent wait()
 }
 
 static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
@@ -144,6 +142,11 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
     fcntl(perf_inst_fd, __F_SETSIG, SIGIO);
     fcntl(perf_inst_fd, F_SETOWN, getpid());
 
+    ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(perf_cycle_fd, PERF_EVENT_IOC_RESET, 0);
+
+    ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(perf_cycle_fd, PERF_EVENT_IOC_ENABLE, 0);
     kill(perf_child_pid, SIGCONT);
 }
 
@@ -151,65 +154,61 @@ int main(int argc, char **argv)
 {
     cfg = get_cfg_from_json(argv[1]);
 
-    restore_out_file = fopen(nstrjoin(2, cfg->image_dir, "restore_out.log"), "w+");
+    restore_out_file = fopen(nstrjoin(2, cfg->image_dir, "_restore_out.log"), "a+");
 
-    for (int i = 0; i < cfg->simpoint.k; ++i)
+    set_image_restore_criu(cfg->image_dir);
+    long dump_offset = get_insts_from_dir_name(cfg->image_dir) - (cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.ov_insts * (int)cfg->process.warmup_ratio);
+    perf_child_pid = image_restore_criu();
+    set_sched(perf_child_pid, cfg->process.affinity);
+    printf("restore child pid:%d\n", perf_child_pid);
+
+    struct perf_event_attr pe;
+    memset(&pe, 0, sizeof(struct perf_event_attr));
+    pe.type = PERF_TYPE_HARDWARE;
+    pe.size = sizeof(struct perf_event_attr);
+    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+    pe.disabled = 1;
+    pe.inherit = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+
+    pe.sample_period = cfg->process.ov_insts * (int)cfg->process.warmup_ratio - cfg->process.irq_offset - dump_offset;
+    pe.wakeup_events = 100;
+    perf_warmup_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
+    if (perf_warmup_fd == -1)
     {
-        set_image_restore_criu(cfg->image_dir);
-        int dump_offset = get_insts_from_dir_name(cfg->image_dir) - cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts;
-        perf_child_pid = image_restore_criu();
-        set_sched(perf_child_pid, cfg->process.affinity);
-        printf("restore child pid:%d\n", perf_child_pid);
-
-        struct perf_event_attr pe;
-        memset(&pe, 0, sizeof(struct perf_event_attr));
-        pe.type = PERF_TYPE_HARDWARE;
-        pe.size = sizeof(struct perf_event_attr);
-        pe.config = PERF_COUNT_HW_INSTRUCTIONS;
-        pe.disabled = 1;
-        pe.inherit = 1;
-        pe.exclude_kernel = 1;
-        pe.exclude_hv = 1;
-
-        pe.sample_period = cfg->process.ov_insts * (int)cfg->process.warmup_ratio - cfg->process.irq_offset - dump_offset;
-        pe.wakeup_events = 100;
-
-        perf_warmup_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
-        if (perf_warmup_fd == -1)
-        {
-            fprintf(stderr, "Error opening leader %llx\n", pe.config);
-            kill(perf_child_pid, SIGTERM);
-            return -1;
-        }
-
-        // signal handler:
-        // Configure signal handler
-        struct sigaction sa;
-        memset(&sa, 0, sizeof(struct sigaction));
-        sa.sa_sigaction = warmup_event_handler;
-        sa.sa_flags = SA_SIGINFO | SA_RESTART;
-
-        // Setup signal handler
-        if (sigaction(SIGIO, &sa, 0) < 0)
-        {
-            perror("sigaction");
-            kill(perf_child_pid, SIGTERM);
-            exit(-1);
-        }
-
-        // Setup event handler for overflow signals
-        fcntl(perf_warmup_fd, F_SETFL, O_NONBLOCK | O_ASYNC);
-        fcntl(perf_warmup_fd, __F_SETSIG, SIGIO);
-        fcntl(perf_warmup_fd, F_SETOWN, getpid());
-
-        ioctl(perf_warmup_fd, PERF_EVENT_IOC_RESET, 0);
-        ioctl(perf_warmup_fd, PERF_EVENT_IOC_ENABLE, 0);
-
-        kill(perf_child_pid, SIGCONT);
-
-        // return after test finish
-        waitpid(perf_child_pid, NULL, 0);
+        fprintf(stderr, "Error opening leader %llx\n", pe.config);
+        kill(perf_child_pid, SIGTERM);
+        return -1;
     }
+
+    // signal handler:
+    // Configure signal handler
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_sigaction = warmup_event_handler;
+    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+
+    // Setup signal handler
+    if (sigaction(SIGIO, &sa, 0) < 0)
+    {
+        perror("sigaction");
+        kill(perf_child_pid, SIGTERM);
+        exit(-1);
+    }
+
+    // Setup event handler for overflow signals
+    fcntl(perf_warmup_fd, F_SETFL, O_NONBLOCK | O_ASYNC);
+    fcntl(perf_warmup_fd, __F_SETSIG, SIGIO);
+    fcntl(perf_warmup_fd, F_SETOWN, getpid());
+
+    ioctl(perf_warmup_fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(perf_warmup_fd, PERF_EVENT_IOC_ENABLE, 0);
+
+    kill(perf_child_pid, SIGCONT);
+
+    // return after test finish
+    waitpid(perf_child_pid, NULL, 0);
 }
 
 long get_insts_from_dir_name(char *path)
