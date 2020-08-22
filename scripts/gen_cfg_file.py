@@ -5,26 +5,6 @@ import subprocess
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 
-cfg = {}
-with open(sys.argv[1], 'r') as cfg_file:
-    cfg = json.load(cfg_file)
-    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
-        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
-
-
-if cfg["spec_version"] == 2000:
-    spec2k_int = ["164.gzip", "181.mcf", "252.eon", "255.vortex", "175.vpr", "186.crafty",
-                  "253.perlbmk", "256.bzip2", "176.gcc", "197.parser", "254.gap", "300.twolf"]
-    spec2k_fp = ["168.wupwise", "178.galgel", "189.lucas", "171.swim", "179.art", "191.fma3d", "172.mgrid",
-                 "183.equake", "200.sixtrack", "173.applu", "187.facerec", "301.apsi", "177.mesa", "188.ammp"]
-    spec2k_all = spec2k_int+spec2k_fp
-    int_path = os.path.join(cfg["spec_home"], "benchspec/CINT2000/")
-    fp_path = os.path.join(cfg["spec_home"], "benchspec/CFP2000/")
-    invoke_path = os.path.join(cfg["spec_home"], "bin/")
-    tail_path = os.path.join("run/", cfg["spec_run"], "speccmds.cmd")
-
-invoke_cmd = invoke_path+"specinvoke -n "
-
 
 def valgrind_cmd(cfg, bb_file):
     return os.path.join(cfg["valgrind"]["bin_path"], "valgrind") + " --tool=exp-bbv --bb-out-file=" + bb_file + " --interval-size=" + str(cfg["interval_size"])
@@ -33,24 +13,26 @@ def valgrind_cmd(cfg, bb_file):
 def simpoint_cmd(cfg, bb_file, points, weights):
     return os.path.join(cfg["simpoint"]["bin_path"], "simpoint ") + " -loadFVFile " + bb_file + " -maxK " + str(cfg["simpoint"]["maxK"]) + " -saveSimpoints " + points + " -saveSimpointWeights " + weights
 
-# use specinvoke to parse speccmds.cmd to raw commond and input file
-#
-# example input:
-# # Starting run for user #0
-# ../00000002/parser_base.Ofast.static 2.1.dict -batch < ref.in > ref.out 2>> ref.err
-# example output:
-# [absolute/address/parser_base.Ofast.static 2.1.dict -batch, ref.in]
-# return value:
-# [[{path, cmd, inputfile}, {path, cmd, inputfile}], [{path, cmd, inputfile}]]
-# one test multi runs
-
 
 def gen_run_cmd_list(test_list, test_path):
+    # use specinvoke to parse speccmds.cmd to raw commond and input file
+    #
+    # example input:
+    # # Starting run for user #0
+    # ../00000002/parser_base.Ofast.static 2.1.dict -batch < ref.in > ref.out 2>> ref.err
+    # example output:
+    # [absolute/address/parser_base.Ofast.static 2.1.dict -batch, ref.in]
+    # return value:
+    # [[{path, cmd, inputfile}, {path, cmd, inputfile}], [{path, cmd, inputfile}]]
+    # one test multi runs
     spec_run_cmd_list = []
+    invoke_cmd = ios.path.join(cfg["spec_home"], "bin/specinvoke") + " -n"
+    tail_path = os.path.join("run/", cfg["spec_run"], "speccmds.cmd")
     for test_name in test_list:
         if os.path.exists(os.path.join(test_path, test_name, tail_path)) == False:
             print(os.path.join(test_path, test_name, tail_path), "not exist")
             continue
+
         result = subprocess.getoutput(
             invoke_cmd + os.path.join(test_path, test_name, tail_path))
 
@@ -78,7 +60,8 @@ def gen_run_cmd_list(test_list, test_path):
     return spec_run_cmd_list
 
 
-def run_valgrind(cmd_list, cfg):
+def run_valgrind(cmd_list, cfg, run=False):
+    # use valgrind to generate bbvs file
     points_list = []
     weights_list = []
 
@@ -90,6 +73,9 @@ def run_valgrind(cmd_list, cfg):
 
     for cmd_set in cmd_list:
         test_name = cmd_set[0]["path"].split('/')[-3]
+        if cfg["partial_test"] == True and test_name not in cfg["user_test_list"]:
+            continue
+
         if os.path.exists(test_name) == False:
             os.mkdir(test_name)
         os.chdir(test_name)
@@ -109,10 +95,11 @@ def run_valgrind(cmd_list, cfg):
                 valgrind_full_cmd += " < " + cmd["input_file"]
             valgrind_full_cmd += " > std.out 2>> std.err"
 
-            # pool.apply_async(func=sys.stdout.write, args=valgrind_full_cmd)
-            # sub_run_valgrind = subprocess.run(valgrind_full_cmd, shell=True, cwd=cmd["path"])
-            pool.apply_async(func=subprocess.run, kwds={
-                             "args": valgrind_full_cmd, "shell": True, "cwd": cmd["path"]})
+            if run == False:
+                pool.apply_async(func=sys.stdout.write, args=valgrind_full_cmd)
+            else:
+                pool.apply_async(func=subprocess.run, kwds={
+                    "args": valgrind_full_cmd, "shell": True, "cwd": cmd["path"]})
 
         os.chdir("..")
 
@@ -122,7 +109,10 @@ def run_valgrind(cmd_list, cfg):
     return
 
 
-def run_simpoint(cfg):
+def run_simpoint(cfg, run):
+    # use simpoint to generate points
+    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
+        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
     pool = Pool(int(cpu_count()/2))
 
     if os.path.exists(cfg["dir_out"]) == False:
@@ -130,14 +120,18 @@ def run_simpoint(cfg):
         return
     os.chdir(cfg["dir_out"])
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
+        if cfg["partial_test"] == True and dirname not in cfg["user_test_list"]:
+            continue
         os.chdir(dirname)
         for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
             simpoint_full_cmd = simpoint_cmd(
                 cfg, "valgrind.bb", simpoint_cfg_prefix+"sim.points", simpoint_cfg_prefix+"sim.weights")
-            # pool.apply_async(func=sys.stdout.write, args=simpoint_full_cmd)
-            pool.apply_async(func=subprocess.run, kwds={
-                             "args": simpoint_full_cmd, "shell": True, "cwd": os.getcwd()})
+            if run == False:
+                pool.apply_async(func=sys.stdout.write, args=simpoint_full_cmd)
+            else:
+                pool.apply_async(func=subprocess.run, kwds={
+                    "args": simpoint_full_cmd, "shell": True, "cwd": os.getcwd()})
             os.chdir("..")
         os.chdir("..")
 
@@ -148,12 +142,18 @@ def run_simpoint(cfg):
 
 
 def gen_perf_loop_cfg_file(cmd_list, cfg):
+    # for each folder, generate a .json file which can be used by perf* binary files
+    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
+        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
+
     if os.path.exists(cfg["dir_out"]) == False:
         os.mkdir(cfg["dir_out"])
     os.chdir(cfg["dir_out"])
 
     for cmd_set in cmd_list:
         test_name = cmd_set[0]["path"].split('/')[-3]
+        if cfg["partial_test"] == True and test_name not in cfg["user_test_list"]:
+            continue
         if os.path.exists(test_name) == False:
             os.mkdir(test_name)
         os.chdir(test_name)
@@ -202,7 +202,7 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
                 for line in weights_file.readlines():
                     point_weight_pair[k].append(float(line.split(' ')[0]))
                     k += 1
-            
+
             point_weight_pair.sort(key=lambda x: x[0])
             for pair in point_weight_pair:
                 points.append(pair[0])
@@ -230,9 +230,27 @@ def gen_perf_loop_cfg_file(cmd_list, cfg):
     return
 
 
+cfg = {}
+with open(sys.argv[1], 'r') as cfg_file:
+    cfg = json.load(cfg_file)
+    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
+        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
+
+
+if cfg["spec_version"] == 2000:
+    spec2k_int = ["164.gzip", "181.mcf", "252.eon", "255.vortex", "175.vpr", "186.crafty",
+                  "253.perlbmk", "256.bzip2", "176.gcc", "197.parser", "254.gap", "300.twolf"]
+    spec2k_fp = ["168.wupwise", "178.galgel", "189.lucas", "171.swim", "179.art", "191.fma3d", "172.mgrid",
+                 "183.equake", "200.sixtrack", "173.applu", "187.facerec", "301.apsi", "177.mesa", "188.ammp"]
+    spec2k_all = spec2k_int+spec2k_fp
+    int_path = os.path.join(cfg["spec_home"], "benchspec/CINT2000/")
+    fp_path = os.path.join(cfg["spec_home"], "benchspec/CFP2000/")
+
+
 spec2k_int_cmd_list = gen_run_cmd_list(spec2k_int, int_path)
 spec2k_fp_cmd_list = gen_run_cmd_list(spec2k_fp, fp_path)
+# run_valgrind(spec2k_int_cmd_list, cfg)
+# run_valgrind(spec2k_fp_cmd_list, cfg)
+# run_simpoint(cfg)
 gen_perf_loop_cfg_file(spec2k_int_cmd_list, cfg)
 gen_perf_loop_cfg_file(spec2k_fp_cmd_list, cfg)
-# run_valgrind(spec2k_int_cmd_list, cfg)
-# run_simpoint(cfg)

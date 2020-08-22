@@ -3,11 +3,11 @@ import sys
 import os
 
 
-def simpoint_err_calc(cfg):
+def simpoint_loop_err_calc(cfg):
+    # use loop intervals to get simpoints results
     points = []
     weights = []
     intervals = []
-    # print(cfg)
 
     with open(cfg["loop"]["out_file"]) as cfg_file:
         for line in cfg_file.readlines():
@@ -46,13 +46,6 @@ def simpoint_err_calc(cfg):
     avg_ipc_err = (avg_interval_ipc-total_ipc)/total_ipc
     simpoint_ipc_err = (simpoint_ipc-total_ipc)/total_ipc
 
-    # print(cfg["process"]["filename"])
-    # print("simpoins:", len(points))
-    # print("total ip / avg interval ipc / simpoint ipc")
-    # print(total_ipc, avg_interval_ipc, simpoint_ipc)
-    # print("error:")
-    # print(avg_ipc_err, simpoint_ipc_err)
-
     return total_ipc, avg_interval_ipc, simpoint_ipc, avg_ipc_err, simpoint_ipc_err
 
 
@@ -60,4 +53,10 @@ def simpoint_err_calc(cfg):
 # with open(sys.argv[1], 'r') as cfg_file:
 #     cfg = json.load(cfg_file)
 
-# simpoint_err_calc(cfg)
+# res = simpoint_loop_err_calc(cfg)
+# print(cfg["process"]["filename"])
+# print("simpoins:", len(points))
+# print("total ipc / avg interval ipc / simpoint ipc")
+# print(res[0:2])
+# print("error:")
+# print(res[3:4])

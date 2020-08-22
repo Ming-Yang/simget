@@ -21,6 +21,6 @@
         "dump_idx": 1,
         "irq_offset": 0
     },
-    "partial_test": false,
-    "user_test_list": []
+    "partial_test": true,
+    "user_test_list": ["168.wupwise", "171.swim", "176.gcc", "175.vpr", "183.equake"]
 }
