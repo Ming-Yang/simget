@@ -5,12 +5,30 @@ import subprocess
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 
-cfg = {}
-with open(sys.argv[1], 'r') as cfg_file:
-    cfg = json.load(cfg_file)
-top_cfg = {}
-with open(sys.argv[2], 'r') as cfg_file:
-    top_cfg = json.load(cfg_file)
+
+def criu_dump_all(cfg, run=False):
+    if os.path.exists(cfg["dir_out"]) == False:
+        print("no folder exists!")
+        return
+    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
+        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
+    os.chdir(cfg["dir_out"])
+    for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
+        os.chdir(dirname)
+        for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
+            os.chdir(inputs)
+
+            cmd = os.path.join(
+                cfg["simget_home"], "bin/perf_loop_dump") + " " + os.path.join(os.getcwd(), simpoint_cfg_prefix + "loop_cfg.json")
+            if run == True:
+                subprocess.run(cmd, shell=True)
+            else:
+                print(cmd)
+
+            os.chdir("..")
+
+        os.chdir("..")
+    return
 
 
 def simpoint_calc_criu(cfg, top_cfg, run=False):
@@ -36,13 +54,16 @@ def simpoint_calc_criu(cfg, top_cfg, run=False):
         with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
             f.write(json.dumps(o_cfg, indent=4))
 
+        cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + \
+            str(target_dir) + "_restore_cfg.json"
         if run == True:
-            result = subprocess.getoutput(
-                top_cfg["simget_home"] + "/bin/perf_restore_cnt " + str(target_dir) + "_restore_cfg.json")
+            result = subprocess.getoutput(cmd)
             print(result)
             result_list.append(int(i) for i in result.split(' '))
+        else:
+            print(cmd)
         idx += 1
-    
+
     if run == True:
         i_all = 0
         c_all = 0
@@ -52,4 +73,16 @@ def simpoint_calc_criu(cfg, top_cfg, run=False):
 
         return i_all/c_all
 
-print(simpoint_calc_criu(cfg, top_cfg, True))
+
+top_cfg = {}
+cfg = {}
+
+with open(sys.argv[1], 'r') as cfg_file:
+    top_cfg = json.load(cfg_file)
+
+if len(sys.argv) > 2:
+    with open(sys.argv[2], 'r') as cfg_file:
+        cfg = json.load(cfg_file)
+
+criu_dump_all(top_cfg, True)
+# print(simpoint_calc_criu(cfg, top_cfg, True))
