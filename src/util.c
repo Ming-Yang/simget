@@ -138,7 +138,7 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *simpoint_point_item = simpoint_point->child;
     cJSON *simpoint_weight = cJSON_GetObjectItem(simpoint, "weights");
     cJSON *simpoint_weight_item = simpoint_weight->child;
-
+    
     if (image_dir == NULL)
     {
         fprintf(stderr, "no image dir settings");

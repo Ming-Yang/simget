@@ -4,6 +4,7 @@
 #define MAX_ARGS 128
 #define MAX_PATH_LEN 512
 #define MAX_JSON_BUFFER 100000
+#define PRINT_DEBUG_INFO printf("run to file %s, line %d\n", __FILE__,  __LINE__)
 
 typedef struct
 {

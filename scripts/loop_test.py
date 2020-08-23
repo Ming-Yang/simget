@@ -47,7 +47,8 @@ def result_calc(cfg):
         return
     os.chdir(cfg["dir_out"])
     collect_file = open(simpoint_cfg_prefix+"collect_res.txt", 'a')
-    print(time.asctime(time.localtime(time.time())), file=collect_file)
+    print(time.asctime(time.localtime(time.time())),
+          "===================================================", file=collect_file)
 
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
         os.chdir(dirname)
@@ -76,7 +77,6 @@ def result_calc(cfg):
                     print(file=collect_file)
 
             os.chdir("..")
-        print("-----------------", file=collect_file)
         os.chdir("..")
 
 

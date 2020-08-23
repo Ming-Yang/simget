@@ -23,3 +23,15 @@
 
 ## todo
 
+
+## bugs
+1. spec2k 187.facerec 程序执行过程中会不断输出到文件。restore和save的时候，文件大小是不一样的。其他测试可能有一样的问题。最好的方式是每次dump的同时保存硬盘下的文件镜像\
+相同问题的文件还有：
+* 187.facerec/run/00000002/hops.out
+* 176.gcc/run/00000002/166.s integrate.s 200.s scilab.s expr.s
+* 177.mesa/run/00000002/mesa.lo
+* 300.twolf/run/00000002/ref.out
+* 301.apsi/run/00000002/APV
+* 191.fma3d/run/00000002/fmaelo.out
+* 200.sixtrack/run/00000002/fort.31
+* 171.swim/run/00000002/SWIM7

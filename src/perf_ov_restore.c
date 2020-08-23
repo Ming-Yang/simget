@@ -37,7 +37,6 @@ int main(int argc, char **argv)
     pe.inherit = 1;
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
-    cfg->process.child_pid = pid;
     int perf_open_fd = perf_event_open(&pe, pid, -1, -1, 0);
     if (perf_open_fd == -1)
     {

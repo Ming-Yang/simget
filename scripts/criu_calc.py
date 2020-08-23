@@ -34,6 +34,7 @@ def criu_dump_all(cfg, run=False):
 
 def simpoint_calc_criu(top_cfg, local_cfg, run=False):
     result_list = []
+    return_dir = os.getcwd()
     os.chdir(local_cfg["image_dir"])
     dir_list = filter(os.path.isdir, os.listdir(os.getcwd()))
     dir_list = [int(item) for item in dir_list]
@@ -71,7 +72,7 @@ def simpoint_calc_criu(top_cfg, local_cfg, run=False):
             print(cmd)
         idx += 1
 
-    os.chdir("..")
+    os.chdir(return_dir)
 
     if run == True:
         i_all = 0
@@ -92,7 +93,8 @@ def criu_calc_all(cfg):
 
     os.chdir(cfg["dir_out"])
     target_file = open(simpoint_cfg_prefix+"criu_res.log", 'a')
-    print(time.asctime(time.localtime(time.time())), file=target_file)
+    print(time.asctime(time.localtime(time.time())),
+          "===================================================", file=target_file)
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
         print(dirname, file=target_file)
         print(dirname)
@@ -111,7 +113,7 @@ def criu_calc_all(cfg):
                     criu_simpoint_ipc = simpoint_calc_criu(
                         top_cfg, local_cfg, True)
                 except ValueError:
-                    print("error!", file=target_file)
+                    print("run error!\n\n", file=target_file)
                     os.chdir("..")
                     continue
 
@@ -119,12 +121,15 @@ def criu_calc_all(cfg):
                 [total_insts, total_cycles] = loop_log_file.readlines()[-1].split(" ")
                 full_ipc = int(total_insts)/int(total_cycles)
 
-            print(criu_simpoint_ipc, full_ipc, "err:",
-                  (full_ipc - criu_simpoint_ipc)/criu_simpoint_ipc, file=target_file)
+            print(full_ipc, criu_simpoint_ipc, file=target_file)
+            print("err:",
+                  (criu_simpoint_ipc - full_ipc)/full_ipc, file=target_file)
+            print(file=target_file)
 
             os.chdir("..")
 
         os.chdir("..")
+    target_file.close()
     return
 
 
@@ -139,5 +144,5 @@ if len(sys.argv) > 2:
         local_cfg = json.load(cfg_file)
 
 # criu_dump_all(top_cfg, True)
-# print(simpoint_calc_criu(top_cfg, cfg , True))
+# print(simpoint_calc_criu(top_cfg, local_cfg , True))
 criu_calc_all(top_cfg)

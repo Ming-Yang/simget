@@ -22,5 +22,5 @@
         "irq_offset": 0
     },
     "partial_test": true,
-    "user_test_list": ["168.wupwise", "171.swim", "176.gcc", "175.vpr", "183.equake"]
+    "user_test_list": ["175.vpr"]
 }

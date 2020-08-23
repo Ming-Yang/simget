@@ -64,11 +64,11 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
     waitpid(perf_child_pid, NULL, WUNTRACED);
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_DISABLE, 0);
 
-    if (info->si_code != POLL_IN) // Only POLL_IN should happen.
-    {
-        perror("wrong signal\n");
-        exit(-1);
-    }
+    // if (info->si_code != POLL_IN) // Only POLL_IN should happen.
+    // {
+    //     fprintf(stderr, "wrong signal info %x\n", info->si_code); 
+    //     exit(-1);
+    // }
 
     long inst_counts = 0;
     if (read(perf_warmup_fd, &inst_counts, sizeof(long)) == -1)
@@ -174,9 +174,12 @@ int main(int argc, char **argv)
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
 
-    if (cfg->simpoint.points[cfg->simpoint.current] - (int)cfg->process.warmup_ratio <= 0)
+    if (cfg->simpoint.points[cfg->simpoint.current] == 0) // no warmup at all
+        pe.sample_period = cfg->process.ov_insts;
+    else if (cfg->simpoint.points[cfg->simpoint.current] - (int)cfg->process.warmup_ratio <= 0) // shorten warmup
         pe.sample_period = cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.irq_offset;
-    pe.sample_period = cfg->process.ov_insts * (int)cfg->process.warmup_ratio - cfg->process.irq_offset - dump_offset;
+    else // normal warmup
+        pe.sample_period = cfg->process.ov_insts * (int)cfg->process.warmup_ratio - cfg->process.irq_offset - dump_offset;
     pe.wakeup_events = 100;
     perf_warmup_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
     if (perf_warmup_fd == -1)
@@ -208,6 +211,17 @@ int main(int argc, char **argv)
 
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_RESET, 0);
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_ENABLE, 0);
+
+    if (cfg->simpoint.points[cfg->simpoint.current] == 0) // no warmup at all
+    {
+        if (sigaction(SIGUSR1, &sa, 0) < 0)
+        {
+            perror("sigaction");
+            kill(perf_child_pid, SIGTERM);
+            exit(-1);
+        }
+        raise(SIGUSR1);
+    }
 
     kill(perf_child_pid, SIGCONT);
 
