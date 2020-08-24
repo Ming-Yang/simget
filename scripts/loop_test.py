@@ -5,31 +5,76 @@ import subprocess
 import time
 from multiprocessing import Pool
 from multiprocessing import cpu_count
-from loop_calc import simpoint_loop_err_calc
+from simget_util import get_test_path, get_simpoint_cfg_prefix
 
 
-def run_loop_test(cfg, run=False):
+def calc_simpoint_loop_err(top_cfg):
+    # use loop intervals to get simpoints results
+    points = []
+    weights = []
+    intervals = []
+
+    with open(top_cfg["loop"]["out_file"]) as cfg_file:
+        for line in cfg_file.readlines():
+            data = line.strip().split(" ")
+            data = [int(i) for i in data]
+            intervals.append(data)
+
+    with open(top_cfg["simpoint"]["point_file"]) as cfg_file:
+        for line in cfg_file.readlines():
+            data = line.strip().split(" ")
+            data = [int(i) for i in data]
+            points.append(data)
+
+    with open(top_cfg["simpoint"]["weight_file"]) as cfg_file:
+        for line in cfg_file.readlines():
+            data = line.strip().split(" ")
+            data = [float(i) for i in data]
+            weights.append(data)
+
+    total_ipc = intervals[-1][0]/intervals[-1][1]
+
+    insts = 0
+    cycles = 0
+    for data in intervals[0:-1]:
+        insts += data[0]
+        cycles += data[1]
+    avg_interval_ipc = insts/cycles
+
+    insts = 0
+    cycles = 0
+    for point, weight in zip(points, weights):
+        insts += intervals[point[0]][0]*weight[0]
+        cycles += intervals[point[0]][1]*weight[0]
+    simpoint_ipc = insts/cycles
+
+    avg_ipc_err = (avg_interval_ipc-total_ipc)/total_ipc
+    simpoint_ipc_err = (simpoint_ipc-total_ipc)/total_ipc
+
+    return total_ipc, avg_interval_ipc, simpoint_ipc, avg_ipc_err, simpoint_ipc_err
+
+
+def run_loop_test(top_cfg, run=False):
     # use loop to get all intervals and print to file
-    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
-        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
+    simpoint_warm_cfg_prefix = get_simpoint_cfg_prefix(top_cfg, True)
 
-    if os.path.exists(cfg["dir_out"]) == False:
+    if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
         return
-    os.chdir(cfg["dir_out"])
+    os.chdir(top_cfg["dir_out"])
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
-        if cfg["partial_test"] == True and dirname not in cfg["user_test_list"]:
+        if top_cfg["partial_test"] == True and dirname not in top_cfg["user_test_list"]:
             continue
         os.chdir(dirname)
         for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
 
             if run == False:
-                print(os.path.join(cfg["simget_home"], "bin/perf_ov_loop") +
-                      " " + os.path.join(os.getcwd(), simpoint_cfg_prefix+"loop_cfg.json"))
+                print(os.path.join(top_cfg["simget_home"], "bin/perf_ov_loop") +
+                      " " + os.path.join(os.getcwd(), simpoint_warm_cfg_prefix+"loop_cfg.json"))
             else:
                 subprocess.run(os.path.join(
-                    cfg["simget_home"], "bin/perf_ov_loop") + " " + os.path.join(os.getcwd(), simpoint_cfg_prefix+"loop_cfg.json"), shell=True)
+                    top_cfg["simget_home"], "bin/perf_ov_loop") + " " + os.path.join(os.getcwd(), simpoint_warm_cfg_prefix+"loop_cfg.json"), shell=True)
 
             os.chdir("..")
         os.chdir("..")
@@ -37,28 +82,28 @@ def run_loop_test(cfg, run=False):
     return
 
 
-def result_calc(cfg):
+def calc_loop_result(top_cfg):
     # select simpoints from all intervals results and calc
-    simpoint_cfg_prefix = str(int(cfg["interval_size"]/1000000)) + \
-        'M_max'+str(cfg["simpoint"]["maxK"])+"_"
+    simpoint_warm_cfg_prefix = get_simpoint_cfg_prefix(top_cfg, True)
 
-    if os.path.exists(cfg["dir_out"]) == False:
+    if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
         return
-    os.chdir(cfg["dir_out"])
-    collect_file = open(simpoint_cfg_prefix+"collect_res.txt", 'a')
+    os.chdir(top_cfg["dir_out"])
+    collect_file = open(simpoint_warm_cfg_prefix+"loop_res.txt", 'a')
     print(time.asctime(time.localtime(time.time())),
           "===================================================", file=collect_file)
-
+    print("test", "input", "full-ipc", "loop-ipc", "loop-simpoint-ipc", "loop-ipc-err(%)",
+          "loop-simpoint-ipc-err(%)", file=collect_file)
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
         os.chdir(dirname)
-        print(dirname, file=collect_file)
+        print(dirname, file=collect_file, end=' ')
         for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
-            with open(simpoint_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
+            with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
                 loop_cfg = json.load(loop_cfg_file)
                 try:
-                    a, b, c, d, e = simpoint_loop_err_calc(loop_cfg)
+                    a, b, c, d, e = calc_simpoint_loop_err(loop_cfg)
                 except ZeroDivisionError:
                     print("input file wrong!", file=collect_file)
                     print("spec run fail, caused by coredump, need fix",
@@ -71,18 +116,13 @@ def result_calc(cfg):
                     print("unknown except!", file=collect_file)
                     print(exc, file=collect_file)
                 else:
-                    print(inputs, file=collect_file)
-                    print(a, b, c, file=collect_file)
-                    print(d, e, file=collect_file)
-                    print(file=collect_file)
+                    if inputs != "run1":
+                        print('\t', file=collect_file, end=' ')
+                    print(inputs, file=collect_file, end=' ')
+                    print("{:.3f}".format(a), "{:.3f}".format(b),
+                          "{:.3f}".format(c), file=collect_file, end=' ')
+                    print("{:.2f}".format(d*100),
+                          "{:.2f}".format(e*100), file=collect_file)
 
             os.chdir("..")
         os.chdir("..")
-
-
-cfg = {}
-with open(sys.argv[1], 'r') as cfg_file:
-    cfg = json.load(cfg_file)
-
-run_loop_test(cfg)
-result_calc(cfg)

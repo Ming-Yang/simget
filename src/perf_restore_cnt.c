@@ -66,7 +66,7 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
 
     // if (info->si_code != POLL_IN) // Only POLL_IN should happen.
     // {
-    //     fprintf(stderr, "wrong signal info %x\n", info->si_code); 
+    //     fprintf(stderr, "wrong signal info %x\n", info->si_code);
     //     exit(-1);
     // }
 
@@ -76,6 +76,10 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
         fprintf(stderr, "read perf inst empty!\n");
         kill(perf_child_pid, SIGTERM);
         exit(-1);
+    }
+    else
+    {
+        printf("after %ld warmup :", inst_counts);
     }
 
     close(perf_warmup_fd);
