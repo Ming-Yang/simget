@@ -22,5 +22,5 @@
         "irq_offset": 0
     },
     "partial_test": true,
-    "user_test_list": ["175.vpr"]
+    "user_test_list": ["200.sixtrack"]
 }
