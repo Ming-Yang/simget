@@ -34,7 +34,7 @@ def dump_criu_all(top_cfg, run=False):
     return
 
 
-def calc_criu_simpoint(top_cfg, local_cfg, run=False, clean=False):
+def calc_criu_simpoint(top_cfg, local_cfg, run=False, clean=False, bias_check=True):
     # calc criu restored(according to simpoint) ipc result, calc one checkpoint once call
     result_list = []
     least_offset_list = []
@@ -57,7 +57,7 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False, clean=False):
             if min_abs > abs(target-d):
                 min_abs = abs(target-d)
                 target_dir = d
-        if abs(target_dir-target) > int(local_cfg["process"]["ov_insts"]):
+        if bias_check == True and abs(target_dir-target) > int(local_cfg["process"]["ov_insts"]):
             print("no suitable checkpoint!")
             continue
 
@@ -97,7 +97,7 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False, clean=False):
         return 0
 
 
-def calc_criu_all(top_cfg, run, clean):
+def calc_criu_all(top_cfg, run, clean, bias_check):
     # calc criu restored(according to simpoint) ipc result for all checkpoint
     # if one simpoint has more than one checkpoint, it will restore the nearest one
     if os.path.exists(top_cfg["dir_out"]) == False:
@@ -110,7 +110,8 @@ def calc_criu_all(top_cfg, run, clean):
     target_file = open(simpoint_warm_cfg_prefix+"criu_res.log", 'a')
     print(time.asctime(time.localtime(time.time())),
           "===================================================", file=target_file)
-    print(str(top_cfg["interval_size"]/1000000)+'M', top_cfg["warmup_ratio"])
+    print("\t\t\t\t"+str(top_cfg["interval_size"]/1000000) +
+          'M', top_cfg["warmup_ratio"], file=target_file)
     print("test", "input", "simpoints", "full-ipc", "criu-simpoint-ipc",
           "criu-simpoint-ipc-err(%)", file=target_file)
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
@@ -133,7 +134,7 @@ def calc_criu_all(top_cfg, run, clean):
                 print(local_cfg["simpoint"]["k"], file=target_file, end=' ')
                 try:
                     criu_simpoint_ipc = calc_criu_simpoint(
-                        top_cfg, local_cfg, run, clean)
+                        top_cfg, local_cfg, run, clean, bias_check)
                 except ValueError:
                     print("run error!\n\n", file=target_file)
                     os.chdir("..")

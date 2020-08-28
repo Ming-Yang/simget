@@ -3,9 +3,9 @@
     "spec_version": 2000,
     "spec_home": "/home/ming/spec2000-x86/",
     "spec_run": "00000002",
-    "dir_out": "/home/ming/loop_check_simpoint",
-    "interval_size": 100000000,
-    "warmup_ratio": 2.0,
+    "dir_out": "/home/ming/loop_check_simpoint_10M",
+    "interval_size": 10000000,
+    "warmup_ratio": 1,
     "valgrind": {
         "bin_path": ""
     },

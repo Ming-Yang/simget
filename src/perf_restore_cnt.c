@@ -115,6 +115,7 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
     perf_inst_fd = perf_event_open(&pe_insts, perf_child_pid, -1, -1, 0);
     if (perf_inst_fd == -1)
     {
+        PRINT_DEBUG_INFO;
         fprintf(stderr, "Error opening leader %llx\n", pe_insts.config);
         kill(perf_child_pid, SIGTERM);
         exit(-1);
@@ -123,6 +124,7 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
     perf_cycle_fd = perf_event_open(&pe_cycles, perf_child_pid, -1, -1, 0);
     if (perf_cycle_fd == -1)
     {
+        PRINT_DEBUG_INFO;
         fprintf(stderr, "Error opening leader %llx\n", pe_cycles.config);
         kill(perf_child_pid, SIGTERM);
         exit(-1);
@@ -178,7 +180,7 @@ int main(int argc, char **argv)
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
 
-    if (cfg->simpoint.points[cfg->simpoint.current] == 0) // no warmup at all
+    if (cfg->simpoint.points[cfg->simpoint.current] == 0 || cfg->process.warmup_ratio == 0) // no warmup at all
         pe.sample_period = cfg->process.ov_insts;
     else if (cfg->simpoint.points[cfg->simpoint.current] - (int)cfg->process.warmup_ratio <= 0) // shorten warmup
         pe.sample_period = cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.irq_offset;
@@ -188,6 +190,7 @@ int main(int argc, char **argv)
     perf_warmup_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
     if (perf_warmup_fd == -1)
     {
+        PRINT_DEBUG_INFO;
         fprintf(stderr, "Error opening leader %llx\n", pe.config);
         kill(perf_child_pid, SIGTERM);
         return -1;
@@ -216,7 +219,7 @@ int main(int argc, char **argv)
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_RESET, 0);
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_ENABLE, 0);
 
-    if (cfg->simpoint.points[cfg->simpoint.current] == 0) // no warmup at all
+    if (cfg->simpoint.points[cfg->simpoint.current] == 0 || cfg->process.warmup_ratio == 0) // no warmup at all
     {
         if (sigaction(SIGUSR1, &sa, 0) < 0)
         {

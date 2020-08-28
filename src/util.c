@@ -50,11 +50,11 @@ void print_dump_cfg(DumpCfg *const cfg)
     if (cfg->process.input_from_file)
     {
         if (cfg->process.file_in != NULL)
-            printf("input from file:%s\n", cfg->process.file_in);
+            printf("\ninput from file:%s\n", cfg->process.file_in);
     }
     else
     {
-        printf("no input file\n");
+        printf("\nno input file\n");
     }
 
     printf("overflow trigger insts:");
@@ -123,7 +123,6 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *process_args = cJSON_GetObjectItem(process, "args");
     cJSON *input_from_file = cJSON_GetObjectItem(process, "input_from_file");
     cJSON *file_in = cJSON_GetObjectItem(process, "file_in");
-    cJSON *process_arg = process_args->child;
     cJSON *process_affinity = cJSON_GetObjectItem(process, "affinity");
     cJSON *process_ov_insts = cJSON_GetObjectItem(process, "ov_insts");
     cJSON *process_irq_offset = cJSON_GetObjectItem(process, "irq_offset");
@@ -135,10 +134,8 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     cJSON *simpoint_k = cJSON_GetObjectItem(simpoint, "k");
     cJSON *simpoint_current = cJSON_GetObjectItem(simpoint, "current");
     cJSON *simpoint_point = cJSON_GetObjectItem(simpoint, "points");
-    cJSON *simpoint_point_item = simpoint_point->child;
     cJSON *simpoint_weight = cJSON_GetObjectItem(simpoint, "weights");
-    cJSON *simpoint_weight_item = simpoint_weight->child;
-    
+
     if (image_dir == NULL)
     {
         fprintf(stderr, "no image dir settings");
@@ -158,12 +155,16 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (process_filename != NULL)
         dump_cfg->process.filename = process_filename->valuestring;
 
-    for (int i = 0; process_arg != NULL && i < MAX_ARGS; ++i)
+    if (process_args != NULL)
     {
-        if (!strncmp(process_arg->valuestring, "NULL", 4)) // == "NULL" is incorrect!!!
-            break;
-        dump_cfg->process.args[i] = process_arg->valuestring;
-        process_arg = process_arg->next;
+        cJSON *process_arg = process_args->child;
+        int i = 0;
+        for (; process_arg != NULL && i < MAX_ARGS; ++i)
+        {
+            dump_cfg->process.args[i] = process_arg->valuestring;
+            process_arg = process_arg->next;
+        }
+        dump_cfg->process.args[i] = NULL;
     }
 
     if (input_from_file != NULL)
@@ -202,8 +203,11 @@ DumpCfg *get_cfg_from_json(const char *json_path)
     if (loop_out_file != NULL)
         dump_cfg->loop.out_file = loop_out_file->valuestring;
 
-    if (simpoint_k != NULL)
+    if (simpoint_k != NULL && simpoint_point != NULL && simpoint_weight != NULL)
     {
+        cJSON *simpoint_point_item = simpoint_point->child;
+        cJSON *simpoint_weight_item = simpoint_weight->child;
+
         dump_cfg->simpoint.k = simpoint_k->valueint;
         if (dump_cfg->simpoint.k != 0)
         {
@@ -211,6 +215,9 @@ DumpCfg *get_cfg_from_json(const char *json_path)
             double *weights = (double *)calloc(dump_cfg->simpoint.k, sizeof(double));
             for (int i = 0; i < dump_cfg->simpoint.k; ++i)
             {
+                if (simpoint_point_item == NULL || simpoint_weight_item == NULL)
+                    break;
+
                 points[i] = simpoint_point_item->valueint;
                 weights[i] = simpoint_weight_item->valuedouble;
 
@@ -251,8 +258,8 @@ void set_sched(pid_t pid, int affinity)
         perror("set sched_setaffinity");
         exit(-1);
     }
-    const struct sched_param sched = {
-        .sched_priority = sched_get_priority_max(SCHED_FIFO)};
+    // const struct sched_param sched = {
+    //     .sched_priority = sched_get_priority_max(SCHED_FIFO)};
 
     // if (sched_setscheduler(pid, SCHED_FIFO, &sched) == -1)
     // {

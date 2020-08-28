@@ -38,30 +38,13 @@ int main()
     {
         waitpid(pid, NULL, WUNTRACED);
         
-        criu_set_pid(pid);
-        criu_set_log_file("dump.log");
-        criu_set_log_level(4);
-
-        int fd=open("./criu_logs", O_DIRECTORY|O_CREAT);
-        if(fd<0)
-        {
-            perror("open dir failed");
-            exit(-1);
-        }
-        criu_set_images_dir_fd(fd);
-        
-        criu_set_shell_job(true);
+        set_image_dump_criu(pid, "criu_logs", false);
 
         kill(pid, SIGCONT);
         sleep(1);
 
-        criu_err = criu_dump();
-        if(criu_err<0)
-        {
-            criu_perror(criu_err);
-            kill(pid, SIGTERM);
-            exit(-1);
-        }
+        image_dump_criu(pid);
+
         printf("criu dump pid %d finish\n", pid);
     }
 }

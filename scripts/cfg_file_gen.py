@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import re
 import subprocess
 from multiprocessing import Pool
 from multiprocessing import cpu_count
@@ -99,6 +100,15 @@ def run_valgrind(top_cfg, cmd_list, run=False):
 
             if run == False:
                 pool.apply_async(func=sys.stdout.write, args=valgrind_full_cmd)
+                if os.path.exists(bb_file):
+                    re_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
+                    with open(bb_file, "r") as bb:
+                        for line in bb.readlines():
+                            match_insts = re_insts.match(line)
+                            if match_insts:
+                                print(os.path.join(cur_dir, save_dir),
+                                      match_insts.group(1))
+
             else:
                 pool.apply_async(func=subprocess.run, kwds={
                     "args": valgrind_full_cmd, "shell": True, "cwd": cmd["path"]})
@@ -171,7 +181,7 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
             process_cfg = {}
             process_cfg["path"] = cmd["path"]
             process_cfg["filename"] = cmd["run"].split(" ")[0]
-            process_cfg["args"] = cmd["run"].strip().split(" ")[1:] + ["NULL"]
+            process_cfg["args"] = cmd["run"].strip().split(" ")[1:]
             if cmd["input_file"] != None:
                 process_cfg["input_from_file"] = 1
                 process_cfg["file_in"] = os.path.join(
@@ -183,13 +193,13 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
 
             loop_cfg = {}
             loop_cfg["out_file"] = os.path.join(
-                cur_dir, simpoint_warm_cfg_prefix + "loop_intervals.log")
+                cur_dir, simpoint_cfg_prefix + "loop_intervals.log")
 
             simpoint_cfg = {}
             simpoint_cfg["point_file"] = os.path.join(
-                cur_dir, simpoint_warm_cfg_prefix+"sim.points")
+                cur_dir, simpoint_cfg_prefix+"sim.points")
             simpoint_cfg["weight_file"] = os.path.join(
-                cur_dir, simpoint_warm_cfg_prefix+"sim.weights")
+                cur_dir, simpoint_cfg_prefix+"sim.weights")
 
             k = 0
             point_weight_pair = []
@@ -216,10 +226,11 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
             perf_cfg = {}
             if os.path.exists(simpoint_warm_cfg_prefix + "dump") == False:
                 os.mkdir(simpoint_warm_cfg_prefix + "dump")
-            perf_cfg["image_dir"]=os.path.join(cur_dir, simpoint_warm_cfg_prefix + "dump")
-            perf_cfg["process"]=process_cfg
-            perf_cfg["loop"]=loop_cfg
-            perf_cfg["simpoint"]=simpoint_cfg
+            perf_cfg["image_dir"] = os.path.join(
+                cur_dir, simpoint_warm_cfg_prefix + "dump")
+            perf_cfg["process"] = process_cfg
+            perf_cfg["loop"] = loop_cfg
+            perf_cfg["simpoint"] = simpoint_cfg
 
             with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'w') as f:
                 f.write(json.dumps(perf_cfg, indent=4))

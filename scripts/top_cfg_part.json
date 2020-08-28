@@ -3,7 +3,7 @@
     "spec_version": 2000,
     "spec_home": "/home/ming/spec2000-x86/",
     "spec_run": "00000002",
-    "dir_out": "/home/ming/loop_check_simpoint",
+    "dir_out": "/home/ming/loop_check_simpoint_10M",
     "interval_size": 100000000,
     "warmup_ratio": 2.0,
     "valgrind": {
@@ -18,7 +18,6 @@
     },
     "perf_config": {
         "affinity": 7,
-        "dump_idx": 1,
         "irq_offset": 0
     },
     "partial_test": true,

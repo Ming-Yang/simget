@@ -36,9 +36,9 @@ if args.local != None:
 # gen_perf_loop_cfg_file(top_cfg, cmd_list)
 
 # run_loop_test(top_cfg, True)
-# calc_loop_result(top_cfg)
+calc_loop_result(top_cfg)
 
 # dump_criu_all(top_cfg, True)
 # ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
 # rm_criu_file_size_check_all(top_cfg, ignore_list)
-calc_criu_all(top_cfg, True, True)
+# calc_criu_all(top_cfg, True, False, False)

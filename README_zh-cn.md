@@ -35,3 +35,5 @@
 * 191.fma3d/run/00000002/fmaelo.out
 * 200.sixtrack/run/00000002/fort.31
 * 171.swim/run/00000002/SWIM7
+2. 如果用FIFO调度，perf计算的时钟周期比普通要高，但是总体的运行时间要低
+3. valgrind的计数结果和perf有出入，有多有少，且差距很大，1e-5以上。不同x86机器上同一个二进制用valgrind跑的结果也有差距，1e-8

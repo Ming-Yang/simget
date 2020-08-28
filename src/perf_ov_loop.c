@@ -97,7 +97,7 @@ int main(int argc, char **argv)
     pe_insts.enable_on_exec = 1;
     // pe_insts.precise_ip = 1;
 
-    pe_insts.sample_period = cfg->process.ov_insts - cfg->process.irq_offset;
+    // pe_insts.sample_period = cfg->process.ov_insts - cfg->process.irq_offset;
     pe_insts.wakeup_events = 100;
 
     memset(&pe_cycles, 0, sizeof(struct perf_event_attr));
