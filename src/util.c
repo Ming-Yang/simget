@@ -273,32 +273,24 @@ void detach_from_shell(DumpCfg *cfg)
     int null_fd = open("/dev/null", O_RDWR);
     if (null_fd < 0)
         perror("open /dev/null failed!");
+    
+    int in_fd, out_fd, err_fd;
 
     if (cfg == NULL)
     {
-        dup2(null_fd, STDIN_FILENO);
-        dup2(null_fd, STDOUT_FILENO);
-        dup2(null_fd, STDERR_FILENO);
+        in_fd = null_fd;
+        out_fd = open("./default.out", O_RDWR | O_CREAT | O_APPEND, 0644);
+        err_fd = open("./default.err", O_RDWR | O_CREAT | O_APPEND, 0644);
     }
     else
     {
         if (chdir(cfg->process.path) < 0)
-        {
             perror("change dir failed");
-        }
 
         if (cfg->process.input_from_file)
-        {
-            int in_fd = open(cfg->process.file_in, O_RDONLY);
-            if (in_fd < 0)
-                perror("open child process input file failed!");
-
-            dup2(in_fd, STDIN_FILENO);
-        }
+            in_fd = open(cfg->process.file_in, O_RDONLY);
         else
-        {
-            dup2(null_fd, STDIN_FILENO);
-        }
+            in_fd = null_fd;
 
         size_t l = strlen(cfg->process.filename);
         char *out_file = calloc(l + 5, sizeof(char));
@@ -309,31 +301,36 @@ void detach_from_shell(DumpCfg *cfg)
         strncpy(err_file, cfg->process.filename, l);
         strncpy(err_file + l, ".err", 4);
 
-        int out_fd = open(out_file, O_RDWR | O_CREAT, 0666);
-        int err_fd = open(err_file, O_RDWR | O_CREAT, 0666);
-        if (out_fd < 0)
-        {
-            perror("open child process out file failed, redirect to /dev/null");
-            dup2(null_fd, STDOUT_FILENO);
-        }
-        else
-        {
-            dup2(out_fd, STDOUT_FILENO);
-        }
-
-        if (err_fd < 0)
-        {
-            perror("open child process err file failed,redirect to /dev/null");
-            dup2(null_fd, STDERR_FILENO);
-        }
-        else
-        {
-            dup2(err_fd, STDERR_FILENO);
-        }
+        out_fd = open(out_file, O_RDWR | O_CREAT, 0666);
+        err_fd = open(err_file, O_RDWR | O_CREAT, 0666);
 
         free(out_file);
         free(err_file);
     }
+    
+    if (in_fd < 0)
+    {
+        perror("open child process in file failed, redirect to /dev/null");
+        dup2(null_fd, STDOUT_FILENO);
+    }
+    else
+        dup2(in_fd, STDIN_FILENO);
+    
+    if (out_fd < 0)
+    {
+        perror("open child process out file failed, redirect to /dev/null");
+        dup2(null_fd, STDOUT_FILENO);
+    }
+    else
+        dup2(out_fd, STDOUT_FILENO);
+
+    if (err_fd < 0)
+    {
+        perror("open child process err file failed,redirect to /dev/null");
+        dup2(null_fd, STDERR_FILENO);
+    }
+    else
+        dup2(err_fd, STDERR_FILENO);
 
     if(setsid() < 0)
     {
