@@ -60,7 +60,6 @@ int set_image_dump_criu(pid_t pid, const char *image_dir, bool cont)
 	criu_set_log_file("dump.log");
 	criu_set_log_level(4);
 	criu_set_images_dir_fd(fd);
-	criu_set_shell_job(true);
 	criu_set_leave_running(cont);
 
 	return 0;
@@ -86,7 +85,6 @@ int set_image_restore_criu(const char *image_dir)
 	criu_set_log_file("restore.log");
 	criu_set_log_level(4);
 	criu_set_images_dir_fd(fd);
-	criu_set_shell_job(true);
 
 	return 0;
 }
@@ -109,7 +107,8 @@ pid_t image_restore_criu()
 	pid_t pid = criu_restore_child();
     if (pid < 0)
     {
-        fprintf(stderr, "restore failed: %d\n", pid);
+        fprintf(stderr, "restore failed");
+		criu_perror(pid);
 		exit(-1);
     }
 

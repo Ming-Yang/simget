@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     else if (fork_pid == 0) // child
     {
         set_sched(getpid(), cfg->process.affinity);
-        redirect_io(cfg);
+        detach_from_shell(cfg);
 
         raise(SIGSTOP);
         execv(cfg->process.path_file, cfg->process.argv);

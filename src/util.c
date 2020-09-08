@@ -268,41 +268,77 @@ void set_sched(pid_t pid, int affinity)
     // }
 }
 
-void redirect_io(DumpCfg *cfg)
+void detach_from_shell(DumpCfg *cfg)
 {
-    if (chdir(cfg->process.path) < 0)
+    int null_fd = open("/dev/null", O_RDWR);
+    if (null_fd < 0)
+        perror("open /dev/null failed!");
+
+    if (cfg == NULL)
     {
-        perror("change dir failed");
+        dup2(null_fd, STDIN_FILENO);
+        dup2(null_fd, STDOUT_FILENO);
+        dup2(null_fd, STDERR_FILENO);
     }
-    if (cfg->process.input_from_file)
+    else
     {
-        int in_fd = open(cfg->process.file_in, O_RDONLY);
-        if (in_fd < 0)
-            perror("open child process input file failed!");
+        if (chdir(cfg->process.path) < 0)
+        {
+            perror("change dir failed");
+        }
 
-        dup2(in_fd, STDIN_FILENO);
+        if (cfg->process.input_from_file)
+        {
+            int in_fd = open(cfg->process.file_in, O_RDONLY);
+            if (in_fd < 0)
+                perror("open child process input file failed!");
+
+            dup2(in_fd, STDIN_FILENO);
+        }
+        else
+        {
+            dup2(null_fd, STDIN_FILENO);
+        }
+
+        size_t l = strlen(cfg->process.filename);
+        char *out_file = calloc(l + 5, sizeof(char));
+        strncpy(out_file, cfg->process.filename, l);
+        strncpy(out_file + l, ".out", 4);
+
+        char *err_file = calloc(l + 5, sizeof(char));
+        strncpy(err_file, cfg->process.filename, l);
+        strncpy(err_file + l, ".err", 4);
+
+        int out_fd = open(out_file, O_RDWR | O_CREAT, 0666);
+        int err_fd = open(err_file, O_RDWR | O_CREAT, 0666);
+        if (out_fd < 0)
+        {
+            perror("open child process out file failed, redirect to /dev/null");
+            dup2(null_fd, STDOUT_FILENO);
+        }
+        else
+        {
+            dup2(out_fd, STDOUT_FILENO);
+        }
+
+        if (err_fd < 0)
+        {
+            perror("open child process err file failed,redirect to /dev/null");
+            dup2(null_fd, STDERR_FILENO);
+        }
+        else
+        {
+            dup2(err_fd, STDERR_FILENO);
+        }
+
+        free(out_file);
+        free(err_file);
     }
 
-    size_t l = strlen(cfg->process.filename);
-    char *out_file = calloc(l + 5, sizeof(char));
-    strncpy(out_file, cfg->process.filename, l);
-    strncpy(out_file + l, ".out", 4);
-
-    char *err_file = calloc(l + 5, sizeof(char));
-    strncpy(err_file, cfg->process.filename, l);
-    strncpy(err_file + l, ".err", 4);
-
-    int out_fd = open(out_file, O_RDWR | O_CREAT, 0666);
-    int err_fd = open(err_file, O_RDWR | O_CREAT, 0666);
-    if (out_fd < 0)
-        perror("open child process out file failed!");
-    if (err_fd < 0)
-        perror("open child process err file failed!");
-    dup2(out_fd, STDOUT_FILENO);
-    dup2(err_fd, STDERR_FILENO);
-
-    free(out_file);
-    free(err_file);
+    if(setsid() < 0)
+    {
+        perror("fail to set session ID");
+    }
 }
 
 char *long2string(long num)

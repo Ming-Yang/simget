@@ -13,17 +13,23 @@
 
 int main(int argc, char **argv)
 {
+    if (argc < 2)
+    {
+        printf("need dump config json file\n");
+        return -1;
+    }
+
     DumpCfg *cfg = get_cfg_from_json(argv[1]);
 
     set_image_restore_criu(cfg->image_dir);
 #ifdef _DEBUG
-    struct timeval start,end;
+    struct timeval start, end;
     gettimeofday(&start, NULL);
 #endif
     pid_t pid = image_restore_criu();
 #ifdef _DEBUG
     gettimeofday(&end, NULL);
-    printf("restore time:%f s\n", ((double)(end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec))/1000000);
+    printf("restore time:%f s\n", ((double)(end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec)) / 1000000);
 #endif
     set_sched(pid, cfg->process.affinity);
     printf("restore child pid:%d\n", pid);

@@ -9,6 +9,6 @@
         ],
         "input_from_file": 0,
         "affinity": 3,
-        "ov_insts": "72000000000"
+        "ov_insts": "48000000000"
     }
 }

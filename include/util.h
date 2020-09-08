@@ -46,7 +46,7 @@ void print_long(long);
 void print_dump_cfg(DumpCfg *const);
 DumpCfg *get_cfg_from_json(const char *);
 void set_sched(pid_t, int);
-void redirect_io(DumpCfg *);
+void detach_from_shell(DumpCfg *);
 
 char *nstrjoin(int, ...);
 char *long2string(long);

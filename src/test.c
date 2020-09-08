@@ -7,7 +7,7 @@
 
 int main()
 {
-    for (long a = 1000000; a > 0; --a)
+    for (long a =3000000000; a > 0; --a)
         __asm__ __volatile__(
             "nop"
         );

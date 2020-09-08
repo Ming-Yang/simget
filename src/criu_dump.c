@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include "criu_util.h"
+#include "util.h"
 
 int main()
 {
@@ -31,6 +32,7 @@ int main()
     }
     else if(pid ==0) // child
     {
+        detach_from_shell(NULL);
         raise(SIGSTOP);
         execl("./test", "test", NULL);
     }
