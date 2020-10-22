@@ -14,7 +14,7 @@
 #include "criu_util.h"
 
 DumpCfg *cfg;
-int perf_inst_fd, perf_cycle_fd;
+int perf_inst_fd;
 int perf_child_pid;
 int points_idx;
 long target_insts;
@@ -30,7 +30,6 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
         kill(perf_child_pid, SIGSTOP);
         waitpid(perf_child_pid, NULL, WUNTRACED);
         ioctl(perf_inst_fd, PERF_EVENT_IOC_DISABLE, 0);
-        ioctl(perf_cycle_fd, PERF_EVENT_IOC_DISABLE, 0);
 
         if (info->si_code != POLL_IN) // Only POLL_IN should happen.
         {
@@ -54,7 +53,6 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
             last_insts = inst_counts;
         }
         ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
-        ioctl(perf_cycle_fd, PERF_EVENT_IOC_ENABLE, 0);
 
         kill(perf_child_pid, SIGCONT);
     }
@@ -138,14 +136,6 @@ int main(int argc, char **argv)
             return -1;
         }
 
-        perf_cycle_fd = perf_event_open(&pe_cycles, perf_child_pid, -1, -1, 0);
-        if (perf_cycle_fd == -1)
-        {
-            fprintf(stderr, "Error opening leader %llx\n", pe_cycles.config);
-            kill(perf_child_pid, SIGTERM);
-            return -1;
-        }
-
         // signal handler:
         // Configure signal handler
         struct sigaction sa;
@@ -175,7 +165,6 @@ int main(int argc, char **argv)
 
         // resume child process
         ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
-        ioctl(perf_cycle_fd, PERF_EVENT_IOC_RESET, 0);
         kill(perf_child_pid, SIGCONT);
 
         waitpid(perf_child_pid, NULL, 0);
@@ -191,15 +180,6 @@ int main(int argc, char **argv)
             print_long(inst_counts);
         }
 
-        if (read(perf_cycle_fd, &cycle_counts, sizeof(long)) == -1)
-        {
-            fprintf(stderr, "read perf cycle empty!\n");
-        }
-        else
-        {
-            printf("total cycles:");
-            print_long(cycle_counts);
-        }
         printf("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
         close(perf_inst_fd);
     }
