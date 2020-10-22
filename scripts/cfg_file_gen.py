@@ -11,6 +11,11 @@ from simget_util import get_test_path, get_simpoint_cfg_prefix
 def valgrind_cmd(top_cfg, bb_file):
     return os.path.join(top_cfg["valgrind"]["bin_path"], "valgrind") + " --tool=exp-bbv --bb-out-file=" + bb_file + " --interval-size=" + str(top_cfg["interval_size"])
 
+def qemu_user_cmd(top_cfg, bb_file):
+    return os.path.join(top_cfg["qemu"]["bin_path"], "qemu-mips64el") + " -d nochain -tbv-file " + bb_file + " -interval " + str(top_cfg["interval_size"])
+
+def perf_cmd(target_file):
+    return "perf stat -e instructions:u,cycles:u,r1c:u,r1d:u,r1e:u,r1f:u -o " + target_file
 
 def simpoint_cmd(top_cfg, bb_file, points, weights):
     return os.path.join(top_cfg["simpoint"]["bin_path"], "simpoint ") + " -loadFVFile " + bb_file + " -maxK " + str(top_cfg["simpoint"]["maxK"]) + " -saveSimpoints " + points + " -saveSimpointWeights " + weights
@@ -62,8 +67,8 @@ def gen_run_cmd_list(top_cfg, test_list):
     return spec_run_cmd_list
 
 
-def run_valgrind(top_cfg, cmd_list, run=False):
-    # use valgrind to generate bbvs file
+def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
+    # traverse spec raw cmds with different methods
     points_list = []
     weights_list = []
 
@@ -73,6 +78,7 @@ def run_valgrind(top_cfg, cmd_list, run=False):
 
     pool = Pool(int(cpu_count()/2))
 
+    full_cmd_list=[]
     for cmd_set in cmd_list:
         test_name = cmd_set[0]["path"].split('/')[-3]
         if top_cfg["partial_test"] == True and test_name not in top_cfg["user_test_list"]:
@@ -90,34 +96,57 @@ def run_valgrind(top_cfg, cmd_list, run=False):
                 os.mkdir(save_dir)
             cur_dir = os.getcwd()
 
-            bb_file = os.path.join(cur_dir, save_dir, "valgrind.bb")
-
-            valgrind_full_cmd = valgrind_cmd(
-                top_cfg, bb_file) + " ./" + cmd["run"]
+            if method == "valgrind":
+                bb_file = os.path.join(cur_dir, save_dir, "simpoint.bb")
+                full_cmd = valgrind_cmd(
+                    top_cfg, bb_file) + " ./" + cmd["run"]
+            elif method == "qemu-user":
+                bb_file = os.path.join(cur_dir, save_dir, "simpoint.bb")
+                full_cmd = qemu_user_cmd(
+                    top_cfg, bb_file) + " ./" + cmd["run"]
+            elif method == "perf":
+                perf_file = os.path.join(cur_dir, save_dir, "perf.result")
+                full_cmd = perf_cmd(perf_file) + " ./" + cmd["run"]
+            else:
+                raise ValueError
             if cmd["input_file"] != None:
-                valgrind_full_cmd += " < " + cmd["input_file"]
-            valgrind_full_cmd += " > std.out 2>> std.err"
+                full_cmd += " < " + cmd["input_file"]
+            full_cmd += " > std.out 2>> std.err"
 
             if run == False:
-                pool.apply_async(func=sys.stdout.write, args=valgrind_full_cmd)
+                full_cmd_list.append(full_cmd)
                 if os.path.exists(bb_file):
+                    rd_file = open(bb_file, "r")
                     re_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
-                    with open(bb_file, "r") as bb:
-                        for line in bb.readlines():
-                            match_insts = re_insts.match(line)
-                            if match_insts:
-                                print(os.path.join(cur_dir, save_dir),
-                                      match_insts.group(1))
+                elif os.path.exists(perf_file):
+                    rd_file = open(perf_file, "r")
+                    re_insts = re.compile(r"\s*([\d,]*)\s*instructions:u.*")
+                else:
+                    rd_file = None
+
+                with open(rd_file, "r") as rd:
+                    for line in rd.readlines():
+                        match_insts = re_insts.match(line)
+                        if match_insts:
+                            print(os.path.join(cur_dir, save_dir),
+                                  match_insts.group(1))
 
             else:
                 pool.apply_async(func=subprocess.run, kwds={
-                    "args": valgrind_full_cmd, "shell": True, "cwd": cmd["path"]})
+                    "args": full_cmd, "shell": True, "cwd": cmd["path"]})
 
         os.chdir("..")
 
-    pool.close()
-    print("waiting for calc...")
-    pool.join()
+    
+    if run == False:
+        print("============== full cmds ==============")
+        for each in full_cmd_list:
+            print(each)
+    else:
+        pool.close()
+        print("waiting for calc...")
+        pool.join()
+        
     return
 
 
@@ -137,7 +166,7 @@ def run_simpoint(top_cfg, run):
         for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
             simpoint_full_cmd = simpoint_cmd(
-                top_cfg, "valgrind.bb", simpoint_cfg_prefix+"sim.points", simpoint_cfg_prefix+"sim.weights")
+                top_cfg, "simpoint.bb", simpoint_cfg_prefix+"sim.points", simpoint_cfg_prefix+"sim.weights")
             if run == False:
                 pool.apply_async(func=sys.stdout.write, args=simpoint_full_cmd)
             else:

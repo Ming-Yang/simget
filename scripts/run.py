@@ -3,7 +3,7 @@ import sys
 import json
 import argparse
 from simget_util import *
-from cfg_file_gen import gen_run_cmd_list, run_valgrind, run_simpoint, gen_perf_loop_cfg_file
+from cfg_file_gen import gen_run_cmd_list, traverse_raw_cmd, run_simpoint, gen_perf_loop_cfg_file
 from loop_test import run_loop_test, calc_loop_result
 from criu_file_size_check_remove import gen_ignore_list, rm_criu_file_size_check_all
 from criu_calc import dump_criu_all, calc_criu_all, calc_criu_simpoint
@@ -31,12 +31,14 @@ if args.local != None:
 
 
 # cmd_list = gen_run_cmd_list(top_cfg, get_test_list(top_cfg))
-# run_valgrind(top_cfg, cmd_list, True)
-# run_simpoint(top_cfg, True)
+with open("cmd_list.json","r") as cmd_file:
+    cmd_list = json.load(cmd_file)
+# print(cmd_list)
+traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", False)
 # gen_perf_loop_cfg_file(top_cfg, cmd_list)
 
 # run_loop_test(top_cfg, True)
-calc_loop_result(top_cfg)
+# calc_loop_result(top_cfg)
 
 # dump_criu_all(top_cfg, True)
 # ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
