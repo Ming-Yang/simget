@@ -104,7 +104,7 @@ def calc_loop_result(top_cfg, count=False):
             with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
                 loop_cfg = json.load(loop_cfg_file)
                 try:
-                    a, b, c, d, e, f, g = calc_simpoint_loop_err(loop_cfg, True)
+                    a, b, c, d, e, f, g = calc_simpoint_loop_err(loop_cfg, False)
                 except ZeroDivisionError:
                     print("input file wrong!", file=collect_file)
                     print("spec run fail, caused by coredump, need fix",

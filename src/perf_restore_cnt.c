@@ -180,7 +180,7 @@ int main(int argc, char **argv)
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
 
-    if (cfg->simpoint.points[cfg->simpoint.current] == 0 || cfg->process.warmup_ratio == 0) // no warmup at all
+    if (cfg->simpoint.points[cfg->simpoint.current] == 0 || (int)cfg->process.warmup_ratio == 0) // no warmup at all
         pe.sample_period = cfg->process.ov_insts;
     else if (cfg->simpoint.points[cfg->simpoint.current] - (int)cfg->process.warmup_ratio <= 0) // shorten warmup
         pe.sample_period = cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.irq_offset;
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_RESET, 0);
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_ENABLE, 0);
 
-    if (cfg->simpoint.points[cfg->simpoint.current] == 0 || cfg->process.warmup_ratio == 0) // no warmup at all
+    if (cfg->simpoint.points[cfg->simpoint.current] == 0 || (int)cfg->process.warmup_ratio == 0) // no warmup at all
     {
         if (sigaction(SIGUSR1, &sa, 0) < 0)
         {
