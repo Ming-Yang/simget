@@ -2,6 +2,8 @@
 /demo
 **/__pycache__/
 *.out
+*.json
 .vscode
 core
 /cfg
+
