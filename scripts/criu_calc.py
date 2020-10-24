@@ -4,10 +4,11 @@ import os
 import subprocess
 import time
 import shutil
+import glob
 from simget_util import get_test_path, get_simpoint_cfg_prefix
 
 
-def dump_criu_all(top_cfg, run=False):
+def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
     # dump all criu checkpoint into a folder named by checkpoint insts
     if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
@@ -28,76 +29,87 @@ def dump_criu_all(top_cfg, run=False):
             else:
                 print(cmd)
 
-            os.chdir("..")
+            local_cfg_filename = get_simpoint_cfg_prefix(top_cfg, True)+"loop_cfg.json"
+            with open(local_cfg_filename, 'r') as f:
+                local_cfg = json.load(f)
+            os.chdir(get_simpoint_cfg_prefix(top_cfg, True)+"dump")
+            dir_list = filter(os.path.isdir, os.listdir(os.getcwd()))
+            dir_list = [int(item) for item in dir_list]
+            least_offset_list = []
+            idx = 0
+            for point in local_cfg["simpoint"]["points"]:
+                o_cfg = local_cfg.copy()
+                o_cfg["simpoint"]["current"] = idx
+                if point < int(local_cfg["process"]["warmup_ratio"]):
+                    target = 0
+                else:
+                    target = (point-int(local_cfg["process"]["warmup_ratio"])) * \
+                        int(local_cfg["process"]["ov_insts"])
+                min_abs = sys.maxsize
+                for d in dir_list:
+                    if min_abs > abs(target-d):
+                        min_abs = abs(target-d)
+                        target_dir = d
+                if bias_check == True and min_abs > int(local_cfg["process"]["ov_insts"]):
+                    print("no suitable checkpoint for", dirname, inputs, idx)
+                    continue
 
+                least_offset_list.append(str(target_dir))
+                o_cfg["image_dir"] = os.path.join(
+                    local_cfg["image_dir"], str(target_dir))
+                with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
+                    f.write(json.dumps(o_cfg, indent=4))
+                idx += 1
+
+            for directory in filter(os.path.isdir, os.listdir(os.getcwd())):
+                if bias_clean == True and directory not in least_offset_list:
+                    shutil.rmtree(directory)
+                    os.remove(directory+"_restore_cfg.json")
+                    os.remove(directory+"_restore_out.log")
+                # elif clean == True and os.path.exists(directory+"_restore_cfg.json") == False:
+                #     shutil.rmtree(directory)
+            
+            os.chdir("../..")
         os.chdir("..")
     return
 
 
-def calc_criu_simpoint(top_cfg, local_cfg, run=False, clean=False, bias_check=True):
+def calc_criu_simpoint(top_cfg, local_cfg, run=False):
     # calc criu restored(according to simpoint) ipc result, calc one checkpoint once call
     result_list = []
-    least_offset_list = []
+    weight_list = []
     return_dir = os.getcwd()
     os.chdir(local_cfg["image_dir"])
-    dir_list = filter(os.path.isdir, os.listdir(os.getcwd()))
-    dir_list = [int(item) for item in dir_list]
 
-    idx = 0
-    for point, weight in zip(local_cfg["simpoint"]["points"], local_cfg["simpoint"]["weights"]):
-        o_cfg = local_cfg.copy()
-        o_cfg["simpoint"]["current"] = idx
-        if point < int(local_cfg["process"]["warmup_ratio"]):
-            target = 0
-        else:
-            target = (point-int(local_cfg["process"]["warmup_ratio"])) * \
-                int(local_cfg["process"]["ov_insts"])
-        min_abs = sys.maxsize
-        for d in dir_list:
-            if min_abs > abs(target-d):
-                min_abs = abs(target-d)
-                target_dir = d
-        if bias_check == True and abs(target_dir-target) > int(local_cfg["process"]["ov_insts"]):
-            print("no suitable checkpoint!")
-            continue
-
-        least_offset_list.append(str(target_dir))
-        o_cfg["image_dir"] = os.path.join(
-            local_cfg["image_dir"], str(target_dir))
-        with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
-            f.write(json.dumps(o_cfg, indent=4))
-
-        cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + \
-            str(target_dir) + "_restore_cfg.json"
+    for cfg_filename in glob.glob("*.json"):
+        cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + cfg_filename
         if run == True:
             result = subprocess.getoutput(cmd)
             print(result)
             result_list.append(int(i)
                                for i in result.split(':')[-1].split(' '))
+            with open(cfg_filename, 'r') as cfg_file:
+                cfg = json.load(cfg_file)
+                weight_list.append(
+                    cfg["simpoint"]["weights"][cfg["simpoint"]["current"]])
         else:
             print(cmd)
-        idx += 1
-
-    if clean == True:
-        for directory in filter(os.path.isdir, os.listdir(os.getcwd())):
-            if directory not in least_offset_list:
-                shutil.rmtree(directory)
 
     os.chdir(return_dir)
 
     if run == True:
         i_all = 0
         c_all = 0
-        for [i, c] in result_list:
+        for [i, c], weight in zip(result_list, weight_list):
             i_all += int(i)
-            c_all += int(c)
+            c_all += int(c)*weight
 
-        return i_all/c_all
+        return i_all/len(result_list)/c_all
     else:
         return 0
 
 
-def calc_criu_all(top_cfg, run, clean, bias_check):
+def calc_criu_all(top_cfg, run=False):
     # calc criu restored(according to simpoint) ipc result for all checkpoint
     # if one simpoint has more than one checkpoint, it will restore the nearest one
     if os.path.exists(top_cfg["dir_out"]) == False:
@@ -134,9 +146,9 @@ def calc_criu_all(top_cfg, run, clean, bias_check):
                 print(local_cfg["simpoint"]["k"], file=target_file, end=' ')
                 try:
                     criu_simpoint_ipc = calc_criu_simpoint(
-                        top_cfg, local_cfg, run, clean, bias_check)
+                        top_cfg, local_cfg, run)
                 except ValueError:
-                    print("run error!\n\n", file=target_file)
+                    print("run error!", file=target_file)
                     os.chdir("..")
                     continue
 

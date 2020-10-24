@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-top", help="top config", required=True)
 parser.add_argument("-ignore", help="criu file check ignore list config")
 parser.add_argument("-local", help="local config for perf* binary")
+parser.add_argument("-times", help="loop run times")
 args = parser.parse_args()
 
 top_cfg = {}
@@ -26,15 +27,18 @@ if args.ignore != None:
 if args.local != None:
     cfg_file = open(args.local, 'r')
     local_cfg = json.load(cfg_file)
-
+if args.times != None:
+    loop_times = int(args.times)
+else:
+    loop_times = 1
 # # full flow:
 
 
-# cmd_list = gen_run_cmd_list(top_cfg, get_test_list(top_cfg))
-with open("cmd_list.json","r") as cmd_file:
-    cmd_list = json.load(cmd_file)
+cmd_list = gen_run_cmd_list(top_cfg, get_test_list(top_cfg))
+# with open("cmd_list.json","r") as cmd_file:
+#     cmd_list = json.load(cmd_file)
 # print(cmd_list)
-traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", False)
+# traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", False)
 # gen_perf_loop_cfg_file(top_cfg, cmd_list)
 
 # run_loop_test(top_cfg, True)
@@ -43,4 +47,6 @@ traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", False)
 # dump_criu_all(top_cfg, True)
 # ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
 # rm_criu_file_size_check_all(top_cfg, ignore_list)
-# calc_criu_all(top_cfg, True, False, False)
+for i in range(1, loop_times+1):
+    print("@run",i)
+    calc_criu_all(top_cfg, True)
