@@ -69,9 +69,6 @@ def gen_run_cmd_list(top_cfg, test_list):
 
 def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
     # traverse spec raw cmds with different methods
-    points_list = []
-    weights_list = []
-
     if os.path.exists(top_cfg["dir_out"]) == False:
         os.mkdir(top_cfg["dir_out"])
     os.chdir(top_cfg["dir_out"])

@@ -64,12 +64,6 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
     waitpid(perf_child_pid, NULL, WUNTRACED);
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_DISABLE, 0);
 
-    // if (info->si_code != POLL_IN) // Only POLL_IN should happen.
-    // {
-    //     fprintf(stderr, "wrong signal info %x\n", info->si_code);
-    //     exit(-1);
-    // }
-
     long inst_counts = 0;
     if (read(perf_warmup_fd, &inst_counts, sizeof(long)) == -1)
     {
@@ -204,7 +198,7 @@ int main(int argc, char **argv)
     sa.sa_flags = SA_SIGINFO | SA_RESTART;
 
     // Setup signal handler
-    if (sigaction(SIGIO, &sa, 0) < 0)
+    if (sigaction(SIGUSR1, &sa, 0) < 0)
     {
         perror("sigaction");
         kill(perf_child_pid, SIGTERM);
@@ -213,7 +207,7 @@ int main(int argc, char **argv)
 
     // Setup event handler for overflow signals
     fcntl(perf_warmup_fd, F_SETFL, O_NONBLOCK | O_ASYNC);
-    fcntl(perf_warmup_fd, __F_SETSIG, SIGIO);
+    fcntl(perf_warmup_fd, __F_SETSIG, SIGUSR1);
     fcntl(perf_warmup_fd, F_SETOWN, getpid());
 
     ioctl(perf_warmup_fd, PERF_EVENT_IOC_RESET, 0);
@@ -221,12 +215,6 @@ int main(int argc, char **argv)
 
     if (cfg->simpoint.points[cfg->simpoint.current] == 0 || (int)cfg->process.warmup_ratio == 0) // no warmup at all
     {
-        if (sigaction(SIGUSR1, &sa, 0) < 0)
-        {
-            perror("sigaction");
-            kill(perf_child_pid, SIGTERM);
-            exit(-1);
-        }
         raise(SIGUSR1);
     }
 

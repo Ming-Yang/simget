@@ -160,7 +160,7 @@ def calc_criu_all(top_cfg, run=False):
                 criu_simpoint_ipc), file=target_file, end=' ')
             print("{:.2f}".format((criu_simpoint_ipc - full_ipc) /
                                   full_ipc*100), file=target_file)
-
+            target_file.flush()
             os.chdir("..")
 
         os.chdir("..")
