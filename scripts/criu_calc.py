@@ -5,6 +5,7 @@ import subprocess
 import time
 import shutil
 import glob
+import re
 from simget_util import get_test_path, get_simpoint_cfg_prefix
 
 
@@ -29,43 +30,46 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
             else:
                 print(cmd)
 
-            local_cfg_filename = get_simpoint_cfg_prefix(top_cfg, True)+"loop_cfg.json"
-            with open(local_cfg_filename, 'r') as f:
-                local_cfg = json.load(f)
-            os.chdir(get_simpoint_cfg_prefix(top_cfg, True)+"dump")
+            loop_cfg_filename = simpoint_warm_cfg_prefix+"loop_cfg.json"
+            with open(loop_cfg_filename, 'r') as f:
+                loop_cfg = json.load(f)
+            os.chdir(simpoint_warm_cfg_prefix+"dump")
             dir_list = filter(os.path.isdir, os.listdir(os.getcwd()))
             dir_list = [int(item) for item in dir_list]
             least_offset_list = []
             idx = 0
-            for point in local_cfg["simpoint"]["points"]:
-                o_cfg = local_cfg.copy()
+            for point in loop_cfg["simpoint"]["points"]:
+                o_cfg = loop_cfg.copy()
                 o_cfg["simpoint"]["current"] = idx
-                if point < int(local_cfg["process"]["warmup_ratio"]):
+                if point < int(loop_cfg["process"]["warmup_ratio"]):
                     target = 0
                 else:
-                    target = (point-int(local_cfg["process"]["warmup_ratio"])) * \
-                        int(local_cfg["process"]["ov_insts"])
+                    target = (point-int(loop_cfg["process"]["warmup_ratio"])) * \
+                        int(loop_cfg["process"]["ov_insts"])
                 min_abs = sys.maxsize
                 for d in dir_list:
                     if min_abs > abs(target-d):
                         min_abs = abs(target-d)
                         target_dir = d
-                if bias_check == True and min_abs > int(local_cfg["process"]["ov_insts"]):
+                if bias_check == True and min_abs > int(loop_cfg["process"]["ov_insts"]):
                     print("no suitable checkpoint for", dirname, inputs, idx)
                     continue
 
                 least_offset_list.append(str(target_dir))
                 o_cfg["image_dir"] = os.path.join(
-                    local_cfg["image_dir"], str(target_dir))
+                    loop_cfg["image_dir"], str(target_dir))
                 with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
-                    f.write(json.dumps(o_cfg, indent=4))
+                    json.dump(o_cfg, f, indent=4)
                 idx += 1
 
-            for directory in filter(os.path.isdir, os.listdir(os.getcwd())):
-                if bias_clean == True and directory not in least_offset_list:
-                    shutil.rmtree(directory)
-                    os.remove(directory+"_restore_cfg.json")
-                    os.remove(directory+"_restore_out.log")
+            for f in os.listdir(os.getcwd()):
+                if re.findall(r"\d+", f)[0] not in least_offset_list:
+                    print("remove checkpoint ", f)
+                    if bias_clean == True:
+                        if os.path.isdir(f) == True:
+                            shutil.rmtree(f)
+                        else:
+                            os.remove(f)
                 # elif clean == True and os.path.exists(directory+"_restore_cfg.json") == False:
                 #     shutil.rmtree(directory)
             
@@ -119,6 +123,9 @@ def calc_criu_all(top_cfg, run=False):
     simpoint_warm_cfg_prefix = get_simpoint_cfg_prefix(top_cfg, True)
 
     os.chdir(top_cfg["dir_out"])
+    full_res_table = {}
+    with open("test_res.json", 'r') as f:
+        full_res_table = json.load(f)
     target_file = open(simpoint_warm_cfg_prefix+"criu_res.log", 'a')
     print(time.asctime(time.localtime(time.time())),
           "===================================================", file=target_file)
@@ -152,9 +159,7 @@ def calc_criu_all(top_cfg, run=False):
                     os.chdir("..")
                     continue
 
-            with open(simpoint_cfg_prefix+"loop_intervals.log", "r") as loop_log_file:
-                [total_insts, total_cycles] = loop_log_file.readlines()[-1].split(" ")
-                full_ipc = int(total_insts)/int(total_cycles)
+            full_ipc = float(full_res_table[dirname][inputs]["loop_result"]["ipc"])
 
             print("{:.4f}".format(full_ipc), "{:.4f}".format(
                 criu_simpoint_ipc), file=target_file, end=' ')

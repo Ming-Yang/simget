@@ -11,11 +11,19 @@ from simget_util import get_test_path, get_simpoint_cfg_prefix
 def valgrind_cmd(top_cfg, bb_file):
     return os.path.join(top_cfg["valgrind"]["bin_path"], "valgrind") + " --tool=exp-bbv --bb-out-file=" + bb_file + " --interval-size=" + str(top_cfg["interval_size"])
 
+
 def qemu_user_cmd(top_cfg, bb_file):
     return os.path.join(top_cfg["qemu"]["bin_path"], "qemu-mips64el") + " -d nochain -tbv-file " + bb_file + " -interval " + str(top_cfg["interval_size"])
 
+
 def perf_cmd(target_file):
     return "perf stat -e instructions:u,cycles:u,r1c:u,r1d:u,r1e:u,r1f:u -o " + target_file
+
+
+def inst_cnt_cmd(top_cfg):
+    cfg_file_name = get_simpoint_cfg_prefix(top_cfg) + "loop_cfg.json"
+    return os.path.join(top_cfg["simget_home"], "bin/perf_count ./") + cfg_file_name
+
 
 def simpoint_cmd(top_cfg, bb_file, points, weights):
     return os.path.join(top_cfg["simpoint"]["bin_path"], "simpoint ") + " -loadFVFile " + bb_file + " -maxK " + str(top_cfg["simpoint"]["maxK"]) + " -saveSimpoints " + points + " -saveSimpointWeights " + weights
@@ -75,7 +83,9 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
 
     pool = Pool(int(cpu_count()/2))
 
-    full_cmd_list=[]
+    full_cmd_list = []
+    bb_file = None
+    perf_file = None
     for cmd_set in cmd_list:
         test_name = cmd_set[0]["path"].split('/')[-3]
         if top_cfg["partial_test"] == True and test_name not in top_cfg["user_test_list"]:
@@ -104,22 +114,27 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
             elif method == "perf":
                 perf_file = os.path.join(cur_dir, save_dir, "perf.result")
                 full_cmd = perf_cmd(perf_file) + " ./" + cmd["run"]
+            elif method == "inst-cnt":
+                full_cmd = inst_cnt_cmd(top_cfg)
             else:
                 raise ValueError
+
             if cmd["input_file"] != None:
                 full_cmd += " < " + cmd["input_file"]
-            full_cmd += " > std.out 2>> std.err"
+            if method != "inst-cnt":
+                full_cmd += " > std.out 2>> std.err"
 
             if run == False:
                 full_cmd_list.append(full_cmd)
-                if os.path.exists(bb_file):
+                if bb_file != None and os.path.exists(bb_file):
                     rd_file = open(bb_file, "r")
                     re_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
-                elif os.path.exists(perf_file):
+                elif perf_file != None and os.path.exists(perf_file):
                     rd_file = open(perf_file, "r")
                     re_insts = re.compile(r"\s*([\d,]*)\s*instructions:u.*")
                 else:
                     rd_file = None
+                    continue
 
                 with open(rd_file, "r") as rd:
                     for line in rd.readlines():
@@ -134,7 +149,6 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
 
         os.chdir("..")
 
-    
     if run == False:
         print("============== full cmds ==============")
         for each in full_cmd_list:
@@ -143,7 +157,6 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
         pool.close()
         print("waiting for calc...")
         pool.join()
-        
     return
 
 
@@ -216,7 +229,7 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
             process_cfg["ov_insts"] = str(top_cfg["interval_size"])
             process_cfg["irq_offset"] = top_cfg["perf_config"]["irq_offset"]
             process_cfg["warmup_ratio"] = top_cfg["warmup_ratio"]
-
+            
             loop_cfg = {}
             loop_cfg["out_file"] = os.path.join(
                 cur_dir, simpoint_cfg_prefix + "loop_intervals.log")
@@ -259,7 +272,7 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
             perf_cfg["simpoint"] = simpoint_cfg
 
             with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'w') as f:
-                f.write(json.dumps(perf_cfg, indent=4))
+                json.dump(perf_cfg, f, indent=4)
 
             os.chdir("..")
         os.chdir("..")

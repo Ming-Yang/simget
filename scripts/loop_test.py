@@ -3,6 +3,7 @@ import sys
 import os
 import subprocess
 import time
+import platform
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from simget_util import get_test_path, get_simpoint_cfg_prefix
@@ -92,15 +93,21 @@ def calc_loop_result(top_cfg, count=False):
         print("no folder exists!")
         return
     os.chdir(top_cfg["dir_out"])
-    collect_file = open(simpoint_warm_cfg_prefix+"loop_res.txt", 'a')
+    collect_file = open(simpoint_warm_cfg_prefix+"loop_res.log", 'a')
+    collect_dict = {}
+    collect_results = {}
+    collect_dict["time"] = time.asctime(time.localtime(time.time()))
+    collect_dict["platform"] = platform.processor()
     print(time.asctime(time.localtime(time.time())),
           "===================================================", file=collect_file)
-    print("test", "input", "full-insts", "full-cycles", "full-ipc", "loop-ipc", "loop-simpoint-ipc", "loop-ipc-err(%)",
+    print("test", "full-insts", "full-cycles", "full-ipc", "loop-ipc", "loop-simpoint-ipc", "loop-ipc-err(%)",
           "loop-simpoint-ipc-err(%)", file=collect_file)
     for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
         os.chdir(dirname)
+        dir_result={}
         for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
             os.chdir(inputs)
+            input_result={}
             with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
                 loop_cfg = json.load(loop_cfg_file)
                 try:
@@ -117,13 +124,20 @@ def calc_loop_result(top_cfg, count=False):
                     print("unknown except!", file=collect_file)
                     print(exc, file=collect_file)
                 else:
-                    print(dirname, inputs, file=collect_file, end=' ')
-                    print("{:.3f}".format(f), "{:.3f}".format(g),
-                          file=collect_file, end=' ')
+                    print(dirname+'/'+inputs, file=collect_file, end=' ')
+                    print(f, g, file=collect_file, end=' ')
                     print("{:.3f}".format(a), "{:.3f}".format(b),
                           "{:.3f}".format(c), file=collect_file, end=' ')
                     print("{:.2f}".format(d*100),
                           "{:.2f}".format(e*100), file=collect_file)
-
+                    loop_result = {}
+                    loop_result["insts"] = f
+                    loop_result["cycles"] = g
+                    loop_result["ipc"] = "{:.3f}".format(b)
+                    input_result["loop_result"] = loop_result
+                    dir_result[inputs] = input_result
             os.chdir("..")
+            collect_dict[dirname] = dir_result
         os.chdir("..")
+    with open("test_res.json", 'w') as f:
+        json.dump(collect_dict, f, indent=4)
