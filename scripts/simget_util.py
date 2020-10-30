@@ -37,3 +37,56 @@ def get_simpoint_cfg_prefix(top_cfg, warmup=False):
     else:
         return str(int(top_cfg["interval_size"]/1000000)) + \
             "M_max" + str(top_cfg["simpoint"]["maxK"]) + '_'
+
+
+def print_fixed_result(top_cfg):
+    filename = get_simpoint_cfg_prefix(top_cfg)+"fix_res.log"
+    outfile = open(os.path.join(top_cfg["dir_out"], filename), 'a')
+    print_head = True
+    with open(os.path.join(top_cfg["dir_out"], "fix_test_res.json"), 'r') as f:
+        res_dict = json.load(f)
+        for case in res_dict:
+            if case[0].isdigit() == False:
+                print(case, res_dict[case], file=outfile)
+                continue
+            for run in res_dict[case]:
+                if print_head == True:
+                    print("testcase", end='\t', file=outfile)
+                    for ele in res_dict[case][run]:
+                        for res in res_dict[case][run][ele]:
+                            print(ele+':'+res, end='\t', file=outfile)
+                    print(file=outfile)
+                    print_head = False
+
+                print(case+'\\'+run, end='\t', file=outfile)
+                for ele in res_dict[case][run]:
+                    for res in res_dict[case][run][ele]:
+                        print(round(res_dict[case][run][ele]
+                                    [res], 3), end='\t', file=outfile)
+                print(file=outfile)
+    print(file=outfile)
+
+
+def print_criu_result(top_cfg, json_filename):
+    filename = get_simpoint_cfg_prefix(top_cfg)+"criu_res.log"
+    outfile = open(os.path.join(top_cfg["dir_out"], filename), 'a')
+    print_head = True
+    with open(os.path.join(top_cfg["dir_out"], json_filename), 'r') as f:
+        res_dict = json.load(f)
+        for case in res_dict:
+            if case[0].isdigit() == False:
+                print(case, res_dict[case], file=outfile)
+                continue
+            for run in res_dict[case]:
+                if print_head == True:
+                    print("testcase", end='\t', file=outfile)
+                    for res in res_dict[case][run]:
+                        print('criu:'+res, end='\t', file=outfile)
+                    print(file=outfile)
+                    print_head = False
+
+                print(case+'\\'+run, end='\t', file=outfile)
+                for res in res_dict[case][run]:
+                    print(res_dict[case][run][res], end='\t', file=outfile)
+                print(file=outfile)
+    print(file=outfile)

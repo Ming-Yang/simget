@@ -4,7 +4,7 @@ import json
 import argparse
 from simget_util import *
 from cfg_file_gen import gen_run_cmd_list, traverse_raw_cmd, run_simpoint, gen_perf_loop_cfg_file
-from loop_test import run_loop_test, calc_loop_result
+from loop_test import run_loop_test, save_fixed_result
 from criu_file_size_check_remove import gen_ignore_list, rm_criu_file_size_check_all
 from criu_calc import dump_criu_all, calc_criu_all, calc_criu_simpoint
 
@@ -44,14 +44,15 @@ else:
         
 # # full flow:
 # traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", False)
-gen_perf_loop_cfg_file(top_cfg, cmd_list)
+# gen_perf_loop_cfg_file(top_cfg, cmd_list)
 
 # run_loop_test(top_cfg, True)
-# calc_loop_result(top_cfg)
+# save_fixed_result(top_cfg)
+# print_fixed_result(top_cfg)
 
-dump_criu_all(top_cfg, run=True, bias_clean=True)
-ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
-rm_criu_file_size_check_all(top_cfg, ignore_list)
+# dump_criu_all(top_cfg, run=True, bias_clean=True)
+# ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
+# rm_criu_file_size_check_all(top_cfg, ignore_list)
 for i in range(1, loop_times+1):
     print("@run",i)
-    calc_criu_all(top_cfg, True)
+    calc_criu_all(top_cfg, False)

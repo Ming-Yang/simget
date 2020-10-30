@@ -4,57 +4,150 @@ import os
 import subprocess
 import time
 import platform
+import re
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from simget_util import get_test_path, get_simpoint_cfg_prefix
 
 
-def calc_simpoint_loop_err(top_cfg, count=False):
+def resolve_loop_result_file(local_cfg):
     # use loop intervals to get simpoints results
     points = []
     weights = []
     intervals = []
 
-    with open(top_cfg["loop"]["out_file"]) as cfg_file:
+    with open(local_cfg["loop"]["out_file"]) as cfg_file:
         for line in cfg_file.readlines():
             data = line.strip().split(" ")
             data = [int(i) for i in data]
             intervals.append(data)
 
-    with open(top_cfg["simpoint"]["point_file"]) as cfg_file:
+    with open(local_cfg["simpoint"]["point_file"]) as cfg_file:
         for line in cfg_file.readlines():
             data = line.strip().split(" ")
             data = [int(i) for i in data]
             points.append(data)
 
-    with open(top_cfg["simpoint"]["weight_file"]) as cfg_file:
+    with open(local_cfg["simpoint"]["weight_file"]) as cfg_file:
         for line in cfg_file.readlines():
             data = line.strip().split(" ")
             data = [float(i) for i in data]
             weights.append(data)
 
-    total_ipc = intervals[-1][0]/intervals[-1][1]
-    if count == True:
-        return total_ipc, 0, 0, 0, 0, intervals[-1][0], intervals[-1][1]
+    total_insts = intervals[-1][0]
+    total_cycles = intervals[-1][1]
+    total_ipc = total_insts/total_cycles
 
-    insts = 0
-    cycles = 0
+    avg_insts = 0
+    avg_cycles = 0
     for data in intervals[0:-1]:
-        insts += data[0]
-        cycles += data[1]
-    avg_interval_ipc = insts/cycles
+        avg_insts += data[0]
+        avg_cycles += data[1]
+    avg_ipc = avg_insts/avg_cycles
 
-    insts = 0
-    cycles = 0
+    simpoint_insts = 0
+    simpoint_cycles = 0
     for point, weight in zip(points, weights):
-        insts += intervals[point[0]][0]*weight[0]
-        cycles += intervals[point[0]][1]*weight[0]
-    simpoint_ipc = insts/cycles
+        simpoint_insts += intervals[point[0]][0]
+        simpoint_cycles += intervals[point[0]][1]*weight[0]
+    simpoint_ipc = simpoint_insts/len(points)/simpoint_cycles
 
-    avg_ipc_err = (avg_interval_ipc-total_ipc)/total_ipc
-    simpoint_ipc_err = (simpoint_ipc-total_ipc)/total_ipc
+    return total_insts, total_cycles, total_ipc,\
+        avg_insts, avg_cycles, avg_ipc,\
+        simpoint_insts, simpoint_cycles, simpoint_ipc
 
-    return total_ipc, avg_interval_ipc, simpoint_ipc, avg_ipc_err, simpoint_ipc_err, intervals[-1][0], intervals[-1][1]
+
+def save_fixed_result(top_cfg):
+    # save fixed results to json
+    simpoint_warm_cfg_prefix = get_simpoint_cfg_prefix(top_cfg, True)
+
+    if os.path.exists(top_cfg["dir_out"]) == False:
+        print("no folder exists!")
+        return
+    os.chdir(top_cfg["dir_out"])
+    collect_dict = {}
+    collect_dict["time"] = time.asctime(time.localtime(time.time()))
+    collect_dict["platform"] = platform.processor()
+    for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
+        os.chdir(dirname)
+        dir_result = {}
+        for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
+            os.chdir(inputs)
+            input_result = {}
+            bb_result = {}
+            loop_result = {}
+            avg_result = {}
+            simpoint_result = {}
+            perf_result = {}
+            mycnt_result = {}
+
+            try:
+                with open("simpoint.bb", 'r') as bb_file:
+                    bb_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
+                    for line in bb_file.readlines():
+                        match_insts = bb_insts.match(line)
+                        if match_insts:
+                            bb_result["insts"] = int(match_insts.group(1).replace(',', ''))
+            except FileNotFoundError:
+                print(dirname, inputs, "simpoint.bb not found")
+
+            try:
+                with open("perf.result", 'r') as perf_file:
+                    perf_insts = re.compile(r"\s*([\d,]*)\s*instructions:u.*")
+                    perf_cycles = re.compile(r"\s*([\d,]*)\s*cycles:u.*")
+                    for line in perf_file.readlines():
+                        match_insts = perf_insts.match(line)
+                        match_cycles = perf_cycles.match(line)
+                        if match_insts:
+                            perf_result["insts"] = int(match_insts.group(1).replace(',', ''))
+                        elif match_cycles:
+                            perf_result["cycles"] = int(match_cycles.group(1).replace(',', ''))
+            except FileNotFoundError:
+                print(dirname, inputs, "perf.result not found")
+
+            try:
+                with open("mycnt.result", 'r') as perf_file:
+                    mycnt_insts = re.compile(r"total inst counts:([\d,]*)")
+                    for line in perf_file.readlines():
+                        match_insts = mycnt_insts.match(line)
+                        if match_insts:
+                            mycnt_result["insts"] = int(match_insts.group(1).replace(',', ''))
+            except FileNotFoundError:
+                print(dirname, inputs, "mycnt.result not found")
+
+            with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
+                loop_cfg = json.load(loop_cfg_file)
+                try:
+                    loop_result["insts"], loop_result["cycles"], loop_result["ipc"], \
+                        avg_result["insts"], avg_result["cycles"], avg_result["ipc"], \
+                        simpoint_result["insts"], simpoint_result["cycles"], simpoint_result["ipc"] = \
+                        resolve_loop_result_file(loop_cfg)
+                except Exception as exc:
+                    print("Exception", exc)
+                    continue
+
+            if len(bb_result) > 0:
+                input_result["bb_result"] = bb_result
+            if len(perf_result) > 0:
+                input_result["perf_result"] = perf_result
+            if len(mycnt_result) > 0:
+                input_result["mycnt_result"] = perf_result
+
+            if len(loop_result) > 0:
+                input_result["loop_result"] = loop_result
+            if len(avg_result) > 0:
+                input_result["avg_result"] = avg_result
+            if len(simpoint_result) > 0:
+                input_result["simpoint_result"] = simpoint_result
+
+            if len(input_result) > 0:
+                dir_result[inputs] = input_result
+            os.chdir("..")
+            collect_dict[dirname] = dir_result
+        os.chdir("..")
+
+    with open("fix_test_res.json", 'w') as f:
+        json.dump(collect_dict, f, indent=4)
 
 
 def run_loop_test(top_cfg, run=False):
@@ -83,61 +176,3 @@ def run_loop_test(top_cfg, run=False):
         os.chdir("..")
 
     return
-
-
-def calc_loop_result(top_cfg, count=False):
-    # select simpoints from all intervals results and calc
-    simpoint_warm_cfg_prefix = get_simpoint_cfg_prefix(top_cfg, True)
-
-    if os.path.exists(top_cfg["dir_out"]) == False:
-        print("no folder exists!")
-        return
-    os.chdir(top_cfg["dir_out"])
-    collect_file = open(simpoint_warm_cfg_prefix+"loop_res.log", 'a')
-    collect_dict = {}
-    collect_results = {}
-    collect_dict["time"] = time.asctime(time.localtime(time.time()))
-    collect_dict["platform"] = platform.processor()
-    print(time.asctime(time.localtime(time.time())),
-          "===================================================", file=collect_file)
-    print("test", "full-insts", "full-cycles", "full-ipc", "loop-ipc", "loop-simpoint-ipc", "loop-ipc-err(%)",
-          "loop-simpoint-ipc-err(%)", file=collect_file)
-    for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
-        os.chdir(dirname)
-        dir_result={}
-        for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
-            os.chdir(inputs)
-            input_result={}
-            with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
-                loop_cfg = json.load(loop_cfg_file)
-                try:
-                    a, b, c, d, e, f, g = calc_simpoint_loop_err(loop_cfg, False)
-                except ZeroDivisionError:
-                    print("input file wrong!", file=collect_file)
-                    print("spec run fail, caused by coredump, need fix",
-                          file=collect_file)
-                except IndexError:
-                    print("input file wrong!", file=collect_file)
-                    print("spec run fail, caused by coredump, need fix",
-                          file=collect_file)
-                except Exception as exc:
-                    print("unknown except!", file=collect_file)
-                    print(exc, file=collect_file)
-                else:
-                    print(dirname+'/'+inputs, file=collect_file, end=' ')
-                    print(f, g, file=collect_file, end=' ')
-                    print("{:.3f}".format(a), "{:.3f}".format(b),
-                          "{:.3f}".format(c), file=collect_file, end=' ')
-                    print("{:.2f}".format(d*100),
-                          "{:.2f}".format(e*100), file=collect_file)
-                    loop_result = {}
-                    loop_result["insts"] = f
-                    loop_result["cycles"] = g
-                    loop_result["ipc"] = "{:.3f}".format(b)
-                    input_result["loop_result"] = loop_result
-                    dir_result[inputs] = input_result
-            os.chdir("..")
-            collect_dict[dirname] = dir_result
-        os.chdir("..")
-    with open("test_res.json", 'w') as f:
-        json.dump(collect_dict, f, indent=4)

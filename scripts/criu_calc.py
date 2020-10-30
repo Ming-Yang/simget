@@ -6,7 +6,16 @@ import time
 import shutil
 import glob
 import re
-from simget_util import get_test_path, get_simpoint_cfg_prefix
+from simget_util import get_test_path, get_simpoint_cfg_prefix, print_criu_result
+
+
+def get_criu_json_filename(prefix, target=True):
+    file_list = glob.glob(prefix+"criu_res_*.json")
+    if file_list:
+        num = [int(n.split('.')[0].split('_')[-1]) for n in file_list]
+        num.sort()
+        return prefix + "criu_res_" + str(num[-1] + (1 if target else 0)) + ".json"
+    return prefix + "criu_res_0.json"
 
 
 def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
@@ -72,14 +81,14 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
                             os.remove(f)
                 # elif clean == True and os.path.exists(directory+"_restore_cfg.json") == False:
                 #     shutil.rmtree(directory)
-            
+
             os.chdir("../..")
         os.chdir("..")
     return
 
 
 def calc_criu_simpoint(top_cfg, local_cfg, run=False):
-    # calc criu restored(according to simpoint) ipc result, calc one checkpoint once call
+    # calc criu restored(according to simpoint) ipc result, calc one testcase once call
     result_list = []
     weight_list = []
     return_dir = os.getcwd()
@@ -108,9 +117,9 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
             i_all += int(i)
             c_all += int(c)*weight
 
-        return i_all/len(result_list)/c_all
+        return i_all, c_all, i_all/len(result_list)/c_all
     else:
-        return 0
+        return 0, 0, 0
 
 
 def calc_criu_all(top_cfg, run=False):
@@ -119,55 +128,43 @@ def calc_criu_all(top_cfg, run=False):
     if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
         return
-    simpoint_cfg_prefix = get_simpoint_cfg_prefix(top_cfg)
     simpoint_warm_cfg_prefix = get_simpoint_cfg_prefix(top_cfg, True)
 
     os.chdir(top_cfg["dir_out"])
-    full_res_table = {}
-    with open("test_res.json", 'r') as f:
-        full_res_table = json.load(f)
-    target_file = open(simpoint_warm_cfg_prefix+"criu_res.log", 'a')
-    print(time.asctime(time.localtime(time.time())),
-          "===================================================", file=target_file)
-    print("\t\t\t\t"+str(top_cfg["interval_size"]/1000000) +
-          'M', top_cfg["warmup_ratio"], file=target_file)
-    print("test", "input", "simpoints", "full-ipc", "criu-simpoint-ipc",
-          "criu-simpoint-ipc-err(%)", file=target_file)
-    for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
-        print(dirname, file=target_file, end=' ')
-        print(dirname)
-        if top_cfg["partial_test"] == True and dirname not in top_cfg["user_test_list"]:
-            print(file=target_file)
-            continue
-        os.chdir(dirname)
-        for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
-            if inputs != "run1":
-                print('\t', file=target_file, end=' ')
-            print(inputs, file=target_file, end=' ')
-            print(inputs)
-            os.chdir(inputs)
-            criu_simpoint_ipc = 0.0
-            full_ipc = 0.0
-            with open(simpoint_warm_cfg_prefix+"loop_cfg.json", "r") as local_cfg_file:
-                local_cfg = json.load(local_cfg_file)
-                print(local_cfg["simpoint"]["k"], file=target_file, end=' ')
-                try:
-                    criu_simpoint_ipc = calc_criu_simpoint(
-                        top_cfg, local_cfg, run)
-                except ValueError:
-                    print("run error!", file=target_file)
-                    os.chdir("..")
-                    continue
+    criu_res_dict = {}
+    criu_res_dict["time"] = time.asctime(time.localtime(time.time()))
+    criu_res_dict["warmup_ratio"] = top_cfg["warmup_ratio"]
+    criu_res_dict["interval_size"] = top_cfg["interval_size"]
+    criu_res_dict["maxK"] = top_cfg["simpoint"]["maxK"]
+    with open(get_criu_json_filename(simpoint_warm_cfg_prefix), 'w') as json_file:
+        for dirname in filter(os.path.isdir, os.listdir(os.getcwd())):
+            if top_cfg["partial_test"] == True and dirname not in top_cfg["user_test_list"]:
+                continue
+            os.chdir(dirname)
+            criu_res_dict[dirname] = {}
+            for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
+                os.chdir(inputs)
+                criu_res_dict[dirname][inputs] = {}
+                with open(simpoint_warm_cfg_prefix+"loop_cfg.json", "r") as local_cfg_file:
+                    local_cfg = json.load(local_cfg_file)
+                    criu_res_dict[dirname][inputs]["points"] = local_cfg["simpoint"]["k"]
+                    criu_res_dict[dirname][inputs]["size"] = subprocess.getoutput(
+                        "du -sh "+local_cfg["image_dir"]).split()[0]
+                    try:
+                        criu_res_dict[dirname][inputs]["insts"], \
+                            criu_res_dict[dirname][inputs]["cycles"], \
+                            criu_res_dict[dirname][inputs]["ipc"] = \
+                            calc_criu_simpoint(top_cfg, local_cfg, run)
+                        print("ipc:", criu_res_dict[dirname][inputs]["ipc"])
+                    except Exception as exc:
+                        print("run error!", exc)
+                        os.chdir("..")
+                        continue
 
-            full_ipc = float(full_res_table[dirname][inputs]["loop_result"]["ipc"])
-
-            print("{:.4f}".format(full_ipc), "{:.4f}".format(
-                criu_simpoint_ipc), file=target_file, end=' ')
-            print("{:.2f}".format((criu_simpoint_ipc - full_ipc) /
-                                  full_ipc*100), file=target_file)
-            target_file.flush()
+                os.chdir("..")
             os.chdir("..")
 
-        os.chdir("..")
-    target_file.close()
+        json.dump(criu_res_dict, json_file, indent=4)
+
+    print_criu_result(top_cfg, get_criu_json_filename(simpoint_warm_cfg_prefix, False))
     return

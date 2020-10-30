@@ -1,7 +1,6 @@
 import json
 import sys
 import os
-import re
 import subprocess
 from multiprocessing import Pool
 from multiprocessing import cpu_count
@@ -124,26 +123,7 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
             if method != "inst-cnt":
                 full_cmd += " > std.out 2>> std.err"
 
-            if run == False:
-                full_cmd_list.append(full_cmd)
-                if bb_file != None and os.path.exists(bb_file):
-                    rd_file = open(bb_file, "r")
-                    re_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
-                elif perf_file != None and os.path.exists(perf_file):
-                    rd_file = open(perf_file, "r")
-                    re_insts = re.compile(r"\s*([\d,]*)\s*instructions:u.*")
-                else:
-                    rd_file = None
-                    continue
-
-                with open(rd_file, "r") as rd:
-                    for line in rd.readlines():
-                        match_insts = re_insts.match(line)
-                        if match_insts:
-                            print(os.path.join(cur_dir, save_dir),
-                                  match_insts.group(1))
-
-            else:
+            if run == True:
                 pool.apply_async(func=subprocess.run, kwds={
                     "args": full_cmd, "shell": True, "cwd": cmd["path"]})
 
