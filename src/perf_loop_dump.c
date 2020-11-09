@@ -17,13 +17,11 @@ DumpCfg *cfg;
 int perf_inst_fd;
 int perf_child_pid;
 int points_idx;
-long target_insts;
-struct perf_event_attr pe_insts, pe_cycles;
+int dump_fire = 0;
 
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
     static int ov_times = 1;
-    static long last_insts = 0, last_cycles = 0;
 
     if (ov_times == cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio && points_idx < cfg->simpoint.k)
     {
@@ -38,23 +36,14 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
         }
 
         ++points_idx;
-        long inst_counts = 0;
-        if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
+        if(dump_fire == 0)
         {
-            fprintf(stderr, "read perf inst empty!\n");
-            kill(perf_child_pid, SIGTERM);
-            exit(-1);
+            dump_fire = 1;
         }
         else
         {
-            printf("%d actual insts:%ld\n====================\n", points_idx, inst_counts);
-            set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), true);
-            image_dump_criu(perf_child_pid);
-            last_insts = inst_counts;
+            printf("dump fire again!\n");
         }
-        ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
-
-        kill(perf_child_pid, SIGCONT);
     }
     ++ov_times;
 }
@@ -84,6 +73,7 @@ int main(int argc, char **argv)
     }
     points_idx = start;
 
+    struct perf_event_attr pe_insts;
     memset(&pe_insts, 0, sizeof(struct perf_event_attr));
     pe_insts.type = PERF_TYPE_HARDWARE;
     pe_insts.size = sizeof(struct perf_event_attr);
@@ -98,18 +88,6 @@ int main(int argc, char **argv)
 
     pe_insts.sample_period = cfg->process.ov_insts - cfg->process.irq_offset;
     pe_insts.wakeup_events = 100;
-
-    memset(&pe_cycles, 0, sizeof(struct perf_event_attr));
-    pe_cycles.type = PERF_TYPE_HARDWARE;
-    pe_cycles.size = sizeof(struct perf_event_attr);
-    pe_cycles.config = PERF_COUNT_HW_CPU_CYCLES;
-    pe_cycles.disabled = 1;
-    // pe_cycles.inherit = 1;
-    pe_cycles.exclude_kernel = 1;
-    pe_cycles.exclude_hv = 1;
-    pe_cycles.exclude_idle = 1;
-    pe_cycles.enable_on_exec = 1;
-    // pe_cycles.precise_ip = 1;
 
     perf_child_pid = fork();
     if (perf_child_pid < 0)
@@ -128,6 +106,7 @@ int main(int argc, char **argv)
     else //parent
     {
         waitpid(perf_child_pid, NULL, WUNTRACED);
+        printf("child pid %d\n", perf_child_pid);
         perf_inst_fd = perf_event_open(&pe_insts, perf_child_pid, -1, -1, 0);
         if (perf_inst_fd == -1)
         {
@@ -166,6 +145,30 @@ int main(int argc, char **argv)
         // resume child process
         ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
         kill(perf_child_pid, SIGCONT);
+        
+        while (points_idx < cfg->simpoint.k)
+        {
+            pause();
+            if (dump_fire)
+            {
+                long inst_counts = 0;
+                if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
+                {
+                    fprintf(stderr, "read perf inst empty!\n");
+                    kill(perf_child_pid, SIGTERM);
+                    exit(-1);
+                }
+                else
+                {
+                    printf("%d actual insts:%ld\n====================\n", points_idx, inst_counts);
+                    set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), true);
+                    // image_dump_criu(perf_child_pid);
+                }
+                ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
+                kill(perf_child_pid, SIGCONT);
+                dump_fire = 0;
+            }
+        }
 
         waitpid(perf_child_pid, NULL, 0);
         printf("finish loop dump\n");
