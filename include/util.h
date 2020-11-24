@@ -19,6 +19,7 @@ typedef struct
     int irq_offset;
     double warmup_ratio;
     int affinity;
+    pid_t process_pid;
 } PerfCfg;
 
 typedef struct

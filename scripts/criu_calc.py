@@ -68,6 +68,13 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
                 least_offset_list.append(str(target_dir))
                 o_cfg["image_dir"] = os.path.join(
                     loop_cfg["image_dir"], str(target_dir))
+
+                files = os.listdir(str(target_dir))
+                for img_file in files:
+                    pids = re.findall(r"mm-(\d+)\.img", img_file)
+                    if pids:
+                        o_cfg["process"]["process_pid"] = pids[0]
+                        break
                 with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
                     json.dump(o_cfg, f, indent=4)
                 idx += 1

@@ -196,6 +196,11 @@ DumpCfg *get_cfg_from_json(const char *json_path)
 
     if (process_warmup_ratio != NULL)
         dump_cfg->process.warmup_ratio = process_warmup_ratio->valuedouble;
+    
+    if (process_pid != NULL)
+        dump_cfg->process.process_pid = process_pid->valueint;
+    else
+        dump_cfg->process.process_pid = -1; //ignore process_pid 
 
     if (process_path != NULL && process_filename != NULL && process_args != NULL)
         parse_cfg_path(dump_cfg);

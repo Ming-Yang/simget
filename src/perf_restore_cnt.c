@@ -160,6 +160,8 @@ int main(int argc, char **argv)
 
     set_image_restore_criu(cfg->image_dir);
     long dump_offset = get_insts_from_dir_name(cfg->image_dir) - (cfg->simpoint.points[cfg->simpoint.current] * cfg->process.ov_insts - cfg->process.ov_insts * (int)cfg->process.warmup_ratio);
+    if(cfg->process.process_pid > 0)
+        kill(cfg->process.process_pid, SIGKILL)
     perf_child_pid = image_restore_criu();
     set_sched(perf_child_pid, cfg->process.affinity);
     // printf("restore child pid:%d\n", perf_child_pid);
