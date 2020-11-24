@@ -50,9 +50,9 @@ else:
 # save_fixed_result(top_cfg)
 # print_fixed_result(top_cfg)
 
-# dump_criu_all(top_cfg, run=True, bias_clean=True)
-# ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
-# rm_criu_file_size_check_all(top_cfg, ignore_list)
+dump_criu_all(top_cfg, run=False, bias_clean=False)
+ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
+rm_criu_file_size_check_all(top_cfg, ignore_list)
 for i in range(1, loop_times+1):
     print("@run",i)
     calc_criu_all(top_cfg, False)

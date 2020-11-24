@@ -126,17 +126,20 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
             if run == True:
                 pool.apply_async(func=subprocess.run, kwds={
                     "args": full_cmd, "shell": True, "cwd": cmd["path"]})
+            else:
+                full_cmd_list.append(full_cmd)
 
         os.chdir("..")
 
-    if run == False:
-        print("============== full cmds ==============")
-        for each in full_cmd_list:
-            print(each)
-    else:
+    if run == True:
         pool.close()
         print("waiting for calc...")
         pool.join()
+    else:
+        print("============== full cmds ==============")
+        for each in full_cmd_list:
+            print(each)
+
     return
 
 
@@ -209,7 +212,7 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
             process_cfg["ov_insts"] = str(top_cfg["interval_size"])
             process_cfg["irq_offset"] = top_cfg["perf_config"]["irq_offset"]
             process_cfg["warmup_ratio"] = top_cfg["warmup_ratio"]
-            
+
             loop_cfg = {}
             loop_cfg["out_file"] = os.path.join(
                 cur_dir, simpoint_cfg_prefix + "loop_intervals.log")

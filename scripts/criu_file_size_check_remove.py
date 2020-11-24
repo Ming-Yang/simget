@@ -19,10 +19,10 @@ def rm_criu_file_size_check(ignore_list, run_path):
             del entry["reg"]["mode"]
             mod = True
 
-        if "reg" in entry and "name" in entry["reg"] and entry["reg"]["name"] in ignore_list:
-            if "size" in entry["reg"]:
-                del entry["reg"]["size"]
-                mod = True
+        # if "reg" in entry and "name" in entry["reg"] and entry["reg"]["name"] in ignore_list:
+        if "size" in entry["reg"]:
+            del entry["reg"]["size"]
+            mod = True
     if mod == True:
         print(run_path)
         subprocess.run("crit encode -o files.img", shell=True,

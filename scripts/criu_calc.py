@@ -62,6 +62,7 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
                         target_dir = d
                 if bias_check == True and min_abs > int(loop_cfg["process"]["ov_insts"]):
                     print("no suitable checkpoint for", dirname, inputs, idx)
+                    idx += 1
                     continue
 
                 least_offset_list.append(str(target_dir))
@@ -72,7 +73,7 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
                 idx += 1
 
             for f in os.listdir(os.getcwd()):
-                if re.findall(r"\d+", f)[0] not in least_offset_list:
+                if len(re.findall(r"\d+", f)) > 0 and re.findall(r"\d+", f)[0] not in least_offset_list:
                     print("remove checkpoint ", f)
                     if bias_clean == True:
                         if os.path.isdir(f) == True:
@@ -95,16 +96,18 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
     os.chdir(local_cfg["image_dir"])
 
     for cfg_filename in glob.glob("*.json"):
+        print(cfg_filename.split('_')[0], end='\t')
         cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + cfg_filename
         if run == True:
-            result = subprocess.getoutput(cmd)
-            print(result)
-            result_list.append(int(i)
-                               for i in result.split(':')[-1].split(' '))
             with open(cfg_filename, 'r') as cfg_file:
                 cfg = json.load(cfg_file)
                 weight_list.append(
                     cfg["simpoint"]["weights"][cfg["simpoint"]["current"]])
+
+            result = subprocess.getoutput(cmd)
+            print(result)
+            result_list.append(int(i)
+                               for i in result.split(':')[-1].split(' '))
         else:
             print(cmd)
 
@@ -151,6 +154,7 @@ def calc_criu_all(top_cfg, run=False):
                     criu_res_dict[dirname][inputs]["size"] = subprocess.getoutput(
                         "du -sh "+local_cfg["image_dir"]).split()[0]
                     try:
+                        print(dirname, inputs)
                         criu_res_dict[dirname][inputs]["insts"], \
                             criu_res_dict[dirname][inputs]["cycles"], \
                             criu_res_dict[dirname][inputs]["ipc"] = \
