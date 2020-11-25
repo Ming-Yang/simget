@@ -66,7 +66,10 @@ int main(int argc, char **argv)
     pe.enable_on_exec = 1;
     // pe.precise_ip = 1;
 
-    pe.sample_period = cfg->process.ov_insts - cfg->process.irq_offset;
+    if (cfg->simpoint.k != 0)
+        pe.sample_period = cfg->process.ov_insts * ((double)cfg->simpoint.points[cfg->simpoint.current] - cfg->process.warmup_ratio);
+    else
+        pe.sample_period = cfg->process.ov_insts - cfg->process.irq_offset;
     pe.wakeup_events = 100;
 
     perf_child_pid = fork();

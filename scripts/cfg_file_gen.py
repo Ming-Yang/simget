@@ -112,7 +112,7 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
                     top_cfg, bb_file) + " ./" + cmd["run"]
             elif method == "perf":
                 perf_file = os.path.join(cur_dir, save_dir, "perf.result")
-                full_cmd = perf_cmd(perf_file) + " ./" + cmd["run"]
+                full_cmd = perf_cmd(perf_file) + " taskset -c 3 ./" + cmd["run"]
             elif method == "inst-cnt":
                 full_cmd = inst_cnt_cmd(top_cfg)
             else:

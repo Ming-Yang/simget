@@ -11,7 +11,9 @@ DEF_OPT = -D_DEBUG
 
 CJSON = ${SRC_DIR}cJSON.c
 
-target: perf_ov_dump perf_ov_restore perf_ov_loop perf_count perf_loop_dump test 
+target: perf_loop_dump perf_restore_cnt
+
+test: perf_ov_dump perf_ov_restore perf_ov_loop perf_count test 
 
 all: ${target} criu_dump criu_restore ptrace
 

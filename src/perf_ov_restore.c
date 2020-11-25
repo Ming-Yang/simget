@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     gettimeofday(&start, NULL);
 #endif
     if(cfg->process.process_pid > 0)
-        kill(cfg->process.process_pid, SIGKILL)
+        kill(cfg->process.process_pid, SIGKILL);
     pid_t pid = image_restore_criu();
 #ifdef _DEBUG
     gettimeofday(&end, NULL);
