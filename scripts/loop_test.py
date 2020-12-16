@@ -82,49 +82,53 @@ def save_fixed_result(top_cfg):
             mycnt_result = {}
 
             try:
-                with open("simpoint.bb", 'r') as bb_file:
-                    bb_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
-                    for line in bb_file.readlines():
-                        match_insts = bb_insts.match(line)
-                        if match_insts:
-                            bb_result["insts"] = int(match_insts.group(1).replace(',', ''))
+                bb_file = open("simpoint.bb", 'r')
+                bb_insts = re.compile(r"#\s*Total instructions:\s*(\d+)")
+                for line in bb_file.readlines():
+                    match_insts = bb_insts.match(line)
+                    if match_insts:
+                        bb_result["insts"] = int(
+                            match_insts.group(1).replace(',', ''))
             except FileNotFoundError:
                 print(dirname, inputs, "simpoint.bb not found")
 
             try:
-                with open("perf.result", 'r') as perf_file:
-                    perf_insts = re.compile(r"\s*([\d,]*)\s*instructions:u.*")
-                    perf_cycles = re.compile(r"\s*([\d,]*)\s*cycles:u.*")
-                    for line in perf_file.readlines():
-                        match_insts = perf_insts.match(line)
-                        match_cycles = perf_cycles.match(line)
-                        if match_insts:
-                            perf_result["insts"] = int(match_insts.group(1).replace(',', ''))
-                        elif match_cycles:
-                            perf_result["cycles"] = int(match_cycles.group(1).replace(',', ''))
+                perf_file = open("perf.result", 'r')
+                perf_insts = re.compile(r"\s*([\d,]*)\s*instructions:u.*")
+                perf_cycles = re.compile(r"\s*([\d,]*)\s*cycles:u.*")
+                for line in perf_file.readlines():
+                    match_insts = perf_insts.match(line)
+                    match_cycles = perf_cycles.match(line)
+                    if match_insts:
+                        perf_result["insts"] = int(
+                            match_insts.group(1).replace(',', ''))
+                    elif match_cycles:
+                        perf_result["cycles"] = int(
+                            match_cycles.group(1).replace(',', ''))
             except FileNotFoundError:
                 print(dirname, inputs, "perf.result not found")
 
             try:
-                with open("mycnt.result", 'r') as perf_file:
-                    mycnt_insts = re.compile(r"total inst counts:([\d,]*)")
-                    for line in perf_file.readlines():
-                        match_insts = mycnt_insts.match(line)
-                        if match_insts:
-                            mycnt_result["insts"] = int(match_insts.group(1).replace(',', ''))
+                perf_file = open("mycnt.result", 'r')
+                mycnt_insts = re.compile(r"total inst counts:([\d,]*)")
+                for line in perf_file.readlines():
+                    match_insts = mycnt_insts.match(line)
+                    if match_insts:
+                        mycnt_result["insts"] = int(
+                            match_insts.group(1).replace(',', ''))
             except FileNotFoundError:
                 print(dirname, inputs, "mycnt.result not found")
 
-            with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'r') as loop_cfg_file:
+            try:
+                loop_cfg_file = open(
+                    simpoint_warm_cfg_prefix + "loop_cfg.json", 'r')
                 loop_cfg = json.load(loop_cfg_file)
-                try:
-                    loop_result["insts"], loop_result["cycles"], loop_result["ipc"], \
-                        avg_result["insts"], avg_result["cycles"], avg_result["ipc"], \
-                        simpoint_result["insts"], simpoint_result["cycles"], simpoint_result["ipc"] = \
-                        resolve_loop_result_file(loop_cfg)
-                except Exception as exc:
-                    print("Exception", exc)
-                    continue
+                loop_result["insts"], loop_result["cycles"], loop_result["ipc"], \
+                    avg_result["insts"], avg_result["cycles"], avg_result["ipc"], \
+                    simpoint_result["insts"], simpoint_result["cycles"], simpoint_result["ipc"] = \
+                    resolve_loop_result_file(loop_cfg)
+            except Exception as exc:
+                print(dirname, inputs, "Exception", exc)
 
             if len(bb_result) > 0:
                 input_result["bb_result"] = bb_result

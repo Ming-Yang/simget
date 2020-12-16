@@ -155,22 +155,21 @@ def calc_criu_all(top_cfg, run=False):
             for inputs in filter(os.path.isdir, os.listdir(os.getcwd())):
                 os.chdir(inputs)
                 criu_res_dict[dirname][inputs] = {}
-                with open(simpoint_warm_cfg_prefix+"loop_cfg.json", "r") as local_cfg_file:
+                try:
+                    local_cfg_file = open(simpoint_warm_cfg_prefix+"loop_cfg.json", "r")
                     local_cfg = json.load(local_cfg_file)
                     criu_res_dict[dirname][inputs]["points"] = local_cfg["simpoint"]["k"]
                     criu_res_dict[dirname][inputs]["size"] = subprocess.getoutput(
                         "du -sh "+local_cfg["image_dir"]).split()[0]
-                    try:
-                        print(dirname, inputs)
-                        criu_res_dict[dirname][inputs]["insts"], \
-                            criu_res_dict[dirname][inputs]["cycles"], \
-                            criu_res_dict[dirname][inputs]["ipc"] = \
-                            calc_criu_simpoint(top_cfg, local_cfg, run)
-                        print("ipc:", criu_res_dict[dirname][inputs]["ipc"])
-                    except Exception as exc:
-                        print("run error!", exc)
-                        os.chdir("..")
-                        continue
+                    print(dirname, inputs)
+                    criu_res_dict[dirname][inputs]["insts"], \
+                        criu_res_dict[dirname][inputs]["cycles"], \
+                        criu_res_dict[dirname][inputs]["ipc"] = \
+                        calc_criu_simpoint(top_cfg, local_cfg, run)
+                    print("ipc:", criu_res_dict[dirname][inputs]["ipc"])
+
+                except Exception as exc:
+                    print("run error!", exc)
 
                 os.chdir("..")
             os.chdir("..")

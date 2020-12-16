@@ -45,19 +45,18 @@ def print_fixed_result(top_cfg):
     print_head = True
     with open(os.path.join(top_cfg["dir_out"], "fix_test_res.json"), 'r') as f:
         res_dict = json.load(f)
+        print(res_dict["time"], res_dict["platform"], file=outfile)
         for case in res_dict:
             if case[0].isdigit() == False:
-                print(case, res_dict[case], file=outfile)
                 continue
             for run in res_dict[case]:
-                if print_head == True:
+                if print_head:
                     print("testcase", end='\t', file=outfile)
                     for ele in res_dict[case][run]:
-                        for res in res_dict[case][run][ele]:
-                            print(ele+':'+res, end='\t', file=outfile)
+                        for item in res_dict[case][run][ele]:
+                            print(ele+':'+item, end='\t', file=outfile)
                     print(file=outfile)
                     print_head = False
-
                 print(case+'\\'+run, end='\t', file=outfile)
                 for ele in res_dict[case][run]:
                     for res in res_dict[case][run][ele]:
@@ -70,23 +69,21 @@ def print_fixed_result(top_cfg):
 def print_criu_result(top_cfg, json_filename):
     filename = get_simpoint_cfg_prefix(top_cfg)+"criu_res.log"
     outfile = open(os.path.join(top_cfg["dir_out"], filename), 'a')
-    print_head = True
     with open(os.path.join(top_cfg["dir_out"], json_filename), 'r') as f:
         res_dict = json.load(f)
+        print(res_dict["time"], "interval size:", res_dict["interval_size"],
+              "warmup_ratio:", res_dict["warmup_ratio"], "maxK:", res_dict["maxK"], file=outfile)
+        print("testcase\tcriu:points\tcriu:image size\tcriu:ipc\tcriu:insts\tcriu:weighted cycles", file=outfile)
         for case in res_dict:
             if case[0].isdigit() == False:
-                print(case, res_dict[case], file=outfile)
                 continue
             for run in res_dict[case]:
-                if print_head == True:
-                    print("testcase", end='\t', file=outfile)
-                    for res in res_dict[case][run]:
-                        print('criu:'+res, end='\t', file=outfile)
-                    print(file=outfile)
-                    print_head = False
-
                 print(case+'\\'+run, end='\t', file=outfile)
-                for res in res_dict[case][run]:
-                    print(res_dict[case][run][res], end='\t', file=outfile)
+                if "points" in res_dict[case][run]:
+                    print(res_dict[case][run]["points"], '\t',
+                          res_dict[case][run]["size"], end='\t', file=outfile)
+                if "ipc" in res_dict[case][run]:
+                    print(res_dict[case][run]["ipc"], '\t', res_dict[case][run]["insts"],
+                          '\t', res_dict[case][run]["cycles"], end='', file=outfile)
                 print(file=outfile)
     print(file=outfile)

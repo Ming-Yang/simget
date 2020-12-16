@@ -12,7 +12,7 @@ def valgrind_cmd(top_cfg, bb_file):
 
 
 def qemu_user_cmd(top_cfg, bb_file):
-    return os.path.join(top_cfg["qemu"]["bin_path"], "qemu-mips64el") + " -d nochain -tbv-file " + bb_file + " -interval " + str(top_cfg["interval_size"])
+    return os.path.join(top_cfg["qemu"]["bin_path"], "qemu-mips64el") + " -cpu loongson3a -d nochain -tbv-file " + bb_file + " -interval " + str(top_cfg["interval_size"])
 
 
 def perf_cmd(target_file):
@@ -60,7 +60,10 @@ def gen_run_cmd_list(top_cfg, test_list):
             cmd_item = {}
             cmd_item["path"] = os.path.join(
                 test_path, test_name, "run", top_cfg["spec_run"])
-            cmd_item["run"] = os.path.split(dry_cmd)[1]
+            pos = dry_cmd.find("/")
+            run_cmd = dry_cmd[pos+1:-1]
+            pos = run_cmd.find("/")
+            cmd_item["run"] = run_cmd[pos+1:-1]
 
             if dry_cmd.find("<") != -1:
                 cmd_item["input_file"] = dry_cmd.strip().split("<")[1]

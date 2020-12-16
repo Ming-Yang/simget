@@ -38,21 +38,24 @@ else:
 
 if args.cmd == None:
     cmd_list = gen_run_cmd_list(top_cfg, get_test_list(top_cfg))
+    with open("cmd_list.json", "w") as cmd_file:
+        json.dump(cmd_list, cmd_file, indent=4)
 else:
     with open(args.cmd, "r") as cmd_file:
         cmd_list = json.load(cmd_file)
         
 # # full flow:
-# traverse_raw_cmd(top_cfg, cmd_list, "perf", True)
+# traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", True)
+# run_simpoint(top_cfg, True)
 # gen_perf_loop_cfg_file(top_cfg, cmd_list)
 
 # run_loop_test(top_cfg, True)
 # save_fixed_result(top_cfg)
 # print_fixed_result(top_cfg)
 
-# dump_criu_all(top_cfg, run=False, bias_clean=False)
-# ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
-# rm_criu_file_size_check_all(top_cfg, ignore_list)
-for i in range(1, loop_times+1):
-    print("@run",i)
-    calc_criu_all(top_cfg, True)
+dump_criu_all(top_cfg, run=False, bias_clean=False)
+ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
+rm_criu_file_size_check_all(top_cfg, ignore_list)
+# for i in range(1, loop_times+1):
+#     print("@run",i)
+#     calc_criu_all(top_cfg, True)
