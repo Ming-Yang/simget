@@ -51,8 +51,8 @@ int main(int argc, char **argv)
     cfg = get_cfg_from_json(argv[1]);
     restore_out_file = fopen(nstrjoin(2, cfg->image_dir, "_restore_out.log"), "a+");
     set_image_restore_criu(cfg->image_dir);
-    // if (cfg->process.process_pid > 0)
-    //     kill(cfg->process.process_pid, SIGKILL);
+    if (cfg->process.process_pid > 0)
+        kill(cfg->process.process_pid, SIGKILL);
     perf_child_pid = image_restore_criu();
     set_sched(perf_child_pid, cfg->process.affinity);
     // printf("restore child pid:%d\n", perf_child_pid);
@@ -213,9 +213,12 @@ int main(int argc, char **argv)
     }
     else
     {
-        fprintf(restore_out_file, "%ld\n", cycle_counts);
-        printf("%ld\n", cycle_counts);
+        fprintf(restore_out_file, "%ld ", cycle_counts);
+        printf("%ld ", cycle_counts);
     }
+
+    fprintf(restore_out_file, "%f\n", cfg->simpoint.weights[cfg->simpoint.current]);
+    printf("%f\n", cfg->simpoint.weights[cfg->simpoint.current]);
 
     kill(perf_child_pid, SIGKILL); // SIGTERM cannot be caught by parrent wait()
 

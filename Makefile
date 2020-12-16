@@ -13,9 +13,9 @@ CJSON = ${SRC_DIR}cJSON.c
 
 target: perf_loop_dump perf_restore_cnt
 
-test: perf_ov_dump perf_ov_restore perf_ov_loop perf_count test 
+extra: perf_ov_dump perf_ov_restore perf_ov_loop perf_count test 
 
-all: ${target} criu_dump criu_restore ptrace
+all: target extra criu_dump criu_restore ptrace
 
 perf_ov_dump:$(addprefix ${SRC_DIR},perf_ov_dump.c criu_util.c util.c) ${CJSON}
 	${CC} -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT} ${LD_OPT}
@@ -39,6 +39,9 @@ perf_ov_loop:$(addprefix ${SRC_DIR},perf_ov_loop.c util.c) ${CJSON}
 	${CC} -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT}
 
 perf_loop_dump:$(addprefix ${SRC_DIR},perf_loop_dump.c criu_util.c util.c) ${CJSON}
+	${CC} -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT} ${LD_OPT}
+
+perf_loop_nodump:$(addprefix ${SRC_DIR},perf_loop_nodump.c criu_util.c util.c) ${CJSON}
 	${CC} -o ${OBJ_DIR}$@ $^ ${CC_OPT} -I${INC_DIR} ${DEF_OPT} ${LD_OPT}
 
 perf_example:$(addprefix ${SRC_DIR},perf_example.c) 

@@ -98,7 +98,6 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
 def calc_criu_simpoint(top_cfg, local_cfg, run=False):
     # calc criu restored(according to simpoint) ipc result, calc one testcase once call
     result_list = []
-    weight_list = []
     return_dir = os.getcwd()
     os.chdir(local_cfg["image_dir"])
 
@@ -108,12 +107,10 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
         if run == True:
             with open(cfg_filename, 'r') as cfg_file:
                 cfg = json.load(cfg_file)
-                weight_list.append(
-                    cfg["simpoint"]["weights"][cfg["simpoint"]["current"]])
 
             result = subprocess.getoutput(cmd)
             print(result)
-            result_list.append(int(i)
+            result_list.append(float(i) if '.' in i else int(i)
                                for i in result.split(':')[-1].split(' '))
         else:
             print(cmd)
@@ -123,7 +120,7 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
     if run == True:
         i_all = 0
         c_all = 0
-        for [i, c], weight in zip(result_list, weight_list):
+        for [i, c, weight] in result_list:
             i_all += int(i)
             c_all += int(c)*weight
 

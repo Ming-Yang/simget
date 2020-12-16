@@ -61,9 +61,9 @@ def gen_run_cmd_list(top_cfg, test_list):
             cmd_item["path"] = os.path.join(
                 test_path, test_name, "run", top_cfg["spec_run"])
             pos = dry_cmd.find("/")
-            run_cmd = dry_cmd[pos+1:-1]
+            run_cmd = dry_cmd[pos+1:]
             pos = run_cmd.find("/")
-            cmd_item["run"] = run_cmd[pos+1:-1]
+            cmd_item["run"] = run_cmd[pos+1:]
 
             if dry_cmd.find("<") != -1:
                 cmd_item["input_file"] = dry_cmd.strip().split("<")[1]
