@@ -11,6 +11,8 @@
 #include "perf_event_open.h"
 #endif
 
+int dir_fd;
+
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -21,14 +23,14 @@ int main(int argc, char **argv)
 
     DumpCfg *cfg = get_cfg_from_json(argv[1]);
 
-    set_image_restore_criu(cfg->image_dir);
+    dir_fd = set_image_restore_criu(cfg->image_dir);
 #ifdef _DEBUG
     struct timeval start, end;
     gettimeofday(&start, NULL);
 #endif
     if(cfg->process.process_pid > 0)
         kill(cfg->process.process_pid, SIGKILL);
-    pid_t pid = image_restore_criu();
+    pid_t pid = image_restore_criu(dir_fd);
 #ifdef _DEBUG
     gettimeofday(&end, NULL);
     printf("restore time:%f s\n", ((double)(end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec)) / 1000000);

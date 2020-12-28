@@ -137,8 +137,8 @@ int main(int argc, char **argv)
         if (points_idx > 0)
         {
             printf("first %d actual insts:%d\n====================\n", points_idx, 0);
-            set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
-            image_dump_criu(perf_child_pid);
+            int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
+            image_dump_criu(perf_child_pid, dir_fd);
         }
 
         // resume child process

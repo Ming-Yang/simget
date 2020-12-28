@@ -14,6 +14,7 @@
 
 int perf_open_fd;
 int perf_child_pid;
+int dir_fd;
 
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
@@ -27,7 +28,7 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
         exit(-1);
     }
 
-    image_dump_criu(perf_child_pid);
+    image_dump_criu(perf_child_pid, dir_fd);
 
     long inst_counts = 0;
     if (read(perf_open_fd, &inst_counts, sizeof(long)) == -1)
@@ -118,7 +119,7 @@ int main(int argc, char **argv)
         fcntl(perf_open_fd, F_SETOWN, getpid());
 
         // init criu
-        set_image_dump_criu(perf_child_pid, cfg->image_dir, false);
+        dir_fd = set_image_dump_criu(perf_child_pid, cfg->image_dir, false);
         printf("config finish, resume child process...\n");
 
         // resume child process

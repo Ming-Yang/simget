@@ -22,7 +22,7 @@
 
 
 ## todo
-
+unshare -p -m --fork --mount-proc 有些情况下，pid会被kthread占用，利用该命令可以新建一个pid namespace，避免冲突
 
 ## bugs
 1. spec2k 187.facerec 程序执行过程中会不断输出到文件。restore和save的时候，文件大小是不一样的。其他测试可能有一样的问题。最好的方式是每次dump的同时保存硬盘下的文件镜像\

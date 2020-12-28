@@ -19,6 +19,7 @@ int perf_child_pid;
 int points_idx = 0;
 int dump_fire = 0;
 int start_from_idx = 0;
+bool continuous_loop = true;
 
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
 {
@@ -43,6 +44,9 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
     }
 }
 
+/* argv: 1 config file name 
+         2 start_from_idx 
+         3 enable loop */
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -56,22 +60,23 @@ int main(int argc, char **argv)
         fprintf(stderr, "no simpoint points\n");
         return -1;
     }
-    if (argc == 3)
+    if (argc >= 3)
     {
         start_from_idx = atoi(argv[2]);
+        points_idx = points_idx < start_from_idx ? start_from_idx : points_idx;
+    }
+    if (argc >= 4)
+    {
+        continuous_loop = atoi(argv[3]);
+        if (continuous_loop)
+            printf("continuous loop dump\n");
+        else
+            printf("seperate loop dump\n");
     }
 #ifdef _DEBUG
     printf("get config finish\n");
     print_dump_cfg(cfg);
 #endif
-    int start = 0;
-    for (; start < cfg->simpoint.k; ++start)
-    {
-        if (cfg->simpoint.points[start] - (int)cfg->process.warmup_ratio > 0)
-            break;
-    }
-    points_idx = start;
-
     struct perf_event_attr pe_insts;
     memset(&pe_insts, 0, sizeof(struct perf_event_attr));
     pe_insts.type = PERF_TYPE_HARDWARE;
@@ -85,7 +90,7 @@ int main(int argc, char **argv)
     pe_insts.enable_on_exec = 1;
     // pe_insts.precise_ip = 1;
 
-    pe_insts.sample_period = (cfg->simpoint.points[points_idx]-(int)cfg->process.warmup_ratio)*cfg->process.ov_insts - cfg->process.irq_offset;
+    pe_insts.sample_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset;
     pe_insts.wakeup_events = 100;
 
     perf_child_pid = fork();
@@ -134,11 +139,18 @@ int main(int argc, char **argv)
         fcntl(perf_inst_fd, __F_SETSIG, SIGIO);
         fcntl(perf_inst_fd, F_SETOWN, getpid());
 
-        if (points_idx > 0)
+        if (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio < 0)
         {
+            int warmup_start = 0;
+            for (; warmup_start < cfg->simpoint.k; ++warmup_start)
+            {
+                if (cfg->simpoint.points[warmup_start] - (int)cfg->process.warmup_ratio > 0)
+                    break;
+            }
+            points_idx = warmup_start;
             printf("first %d actual insts:%d\n====================\n", points_idx, 0);
-            set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
-            image_dump_criu(perf_child_pid);
+            int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
+            image_dump_criu(perf_child_pid, dir_fd);
         }
 
         // resume child process
@@ -157,18 +169,63 @@ int main(int argc, char **argv)
                     kill(perf_child_pid, SIGTERM);
                     exit(-1);
                 }
-                else if (points_idx > start_from_idx)
-                {
-                    printf("%d actual insts:%ld\n====================\n", points_idx-1, inst_counts);
-                    set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), true);
-                    image_dump_criu(perf_child_pid);
-                }
 
-                long new_period = (cfg->simpoint.points[points_idx]-(int)cfg->process.warmup_ratio)*cfg->process.ov_insts - cfg->process.irq_offset - inst_counts;
-                ioctl(perf_inst_fd, PERF_EVENT_IOC_PERIOD, &new_period);
-                ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
-                kill(perf_child_pid, SIGCONT);
+                printf("%d actual insts:%ld\n====================\n", points_idx - 1, inst_counts);
+                int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), true);
+                image_dump_criu(perf_child_pid, dir_fd);
+                close(dir_fd);
+
+                if (continuous_loop)
+                {
+                    long new_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset - inst_counts;
+                    ioctl(perf_inst_fd, PERF_EVENT_IOC_PERIOD, &new_period);
+                    ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
+                }
+                else if(points_idx < cfg->simpoint.k)
+                {
+                    kill(perf_child_pid, SIGTERM);
+                    close(perf_inst_fd);
+
+                    long new_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset;
+                    pe_insts.sample_period = new_period;
+                    perf_child_pid = fork();
+                    if (perf_child_pid < 0)
+                    {
+                        perror("fork failed");
+                        return -1;
+                    }
+                    else if (perf_child_pid == 0) //child
+                    {
+                        set_sched(getpid(), cfg->process.affinity);
+                        detach_from_shell(cfg);
+
+                        raise(SIGSTOP);
+                        execv(cfg->process.path_file, cfg->process.argv);
+                    }
+                    waitpid(perf_child_pid, NULL, WUNTRACED);
+                    printf("child pid %d\n", perf_child_pid);
+                    perf_inst_fd = perf_event_open(&pe_insts, perf_child_pid, -1, -1, 0);
+                    if (perf_inst_fd == -1)
+                    {
+                        fprintf(stderr, "Error opening leader %llx\n", pe_insts.config);
+                        kill(perf_child_pid, SIGTERM);
+                        return -1;
+                    }
+
+                    fcntl(perf_inst_fd, F_SETFL, O_NONBLOCK | O_ASYNC);
+                    fcntl(perf_inst_fd, __F_SETSIG, SIGIO);
+                    fcntl(perf_inst_fd, F_SETOWN, getpid());
+
+                    ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
+                }
+                else
+                {
+                    ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
+                }
+                
+
                 dump_fire = 0;
+                kill(perf_child_pid, SIGCONT);
             }
         }
 

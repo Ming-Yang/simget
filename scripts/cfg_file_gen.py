@@ -185,6 +185,7 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
     if os.path.exists(top_cfg["dir_out"]) == False:
         os.mkdir(top_cfg["dir_out"])
     os.chdir(top_cfg["dir_out"])
+    calc_file = open("calc_file.txt", 'w')
 
     for cmd_set in cmd_list:
         test_name = cmd_set[0]["path"].split('/')[-3]
@@ -260,6 +261,12 @@ def gen_perf_loop_cfg_file(top_cfg, cmd_list):
             with open(simpoint_warm_cfg_prefix + "loop_cfg.json", 'w') as f:
                 json.dump(perf_cfg, f, indent=4)
 
+            print(test_name+"/"+save_dir+'\t'+str(k), file=calc_file)
+            for p, w in zip(points, weights):
+                print(str(p)+'\t'+str(w), file=calc_file)
+            print('\n', file=calc_file)
+
             os.chdir("..")
         os.chdir("..")
+    calc_file.close()
     return

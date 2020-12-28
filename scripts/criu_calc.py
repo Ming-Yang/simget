@@ -73,7 +73,7 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
                 for img_file in files:
                     pids = re.findall(r"mm-(\d+)\.img", img_file)
                     if pids:
-                        o_cfg["process"]["process_pid"] = pids[0]
+                        o_cfg["process"]["pid"] = int(pids[0])
                         break
                 with open(str(target_dir) + "_restore_cfg.json", 'w') as f:
                     json.dump(o_cfg, f, indent=4)
@@ -103,6 +103,7 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
 
     for cfg_filename in glob.glob("*.json"):
         print(cfg_filename.split('_')[0], end='\t')
+        sys.stdout.flush()
         cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + cfg_filename
         if run == True:
             with open(cfg_filename, 'r') as cfg_file:

@@ -40,12 +40,12 @@ int main()
     {
         waitpid(pid, NULL, WUNTRACED);
         
-        set_image_dump_criu(pid, "criu_logs", false);
+        int dir_fd = set_image_dump_criu(pid, "criu_logs", false);
 
         kill(pid, SIGCONT);
         sleep(1);
 
-        image_dump_criu(pid);
+        image_dump_criu(pid, dir_fd);
 
         printf("criu dump pid %d finish\n", pid);
     }

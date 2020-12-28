@@ -53,7 +53,7 @@ int set_image_dump_criu(pid_t pid, const char *image_dir, bool cont)
 	{
 		criu_perror(criu_err);
 		kill(pid, SIGTERM);
-		exit(-2);
+		exit(criu_err);
 	}
 
 	criu_set_pid(pid);
@@ -62,7 +62,7 @@ int set_image_dump_criu(pid_t pid, const char *image_dir, bool cont)
 	criu_set_images_dir_fd(fd);
 	criu_set_leave_running(cont);
 
-	return 0;
+	return fd;
 }
 
 int set_image_restore_criu(const char *image_dir)
@@ -79,17 +79,17 @@ int set_image_restore_criu(const char *image_dir)
 	if (criu_err < 0)
 	{
 		criu_perror(criu_err);
-		exit(-1);
+		exit(criu_err);
 	}
 
 	criu_set_log_file("restore.log");
 	criu_set_log_level(4);
 	criu_set_images_dir_fd(fd);
 
-	return 0;
+	return fd;
 }
 
-int image_dump_criu(pid_t pid)
+int image_dump_criu(pid_t pid, int dir_fd)
 {
 	int criu_err = criu_dump();
 	if (criu_err < 0)
@@ -98,11 +98,12 @@ int image_dump_criu(pid_t pid)
 		kill(pid, SIGTERM);
 		exit(-1);
 	}
+	close(dir_fd);
 
 	return 0;
 }
 
-pid_t image_restore_criu()
+pid_t image_restore_criu(int dir_fd)
 {
 	pid_t pid = criu_restore_child();
     if (pid < 0)
@@ -111,6 +112,7 @@ pid_t image_restore_criu()
 		criu_perror(pid);
 		exit(-1);
     }
+	close(dir_fd);
 
 	return pid;
 }
