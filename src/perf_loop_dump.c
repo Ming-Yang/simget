@@ -77,21 +77,6 @@ int main(int argc, char **argv)
     printf("get config finish\n");
     print_dump_cfg(cfg);
 #endif
-    struct perf_event_attr pe_insts;
-    memset(&pe_insts, 0, sizeof(struct perf_event_attr));
-    pe_insts.type = PERF_TYPE_HARDWARE;
-    pe_insts.size = sizeof(struct perf_event_attr);
-    pe_insts.config = PERF_COUNT_HW_INSTRUCTIONS;
-    pe_insts.disabled = 1;
-    // pe_insts.inherit = 1;
-    pe_insts.exclude_kernel = 1;
-    pe_insts.exclude_hv = 1;
-    pe_insts.exclude_idle = 1;
-    pe_insts.enable_on_exec = 1;
-    // pe_insts.precise_ip = 1;
-
-    pe_insts.sample_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset;
-    pe_insts.wakeup_events = 100;
 
     perf_child_pid = fork();
     if (perf_child_pid < 0)
@@ -111,6 +96,38 @@ int main(int argc, char **argv)
     {
         waitpid(perf_child_pid, NULL, WUNTRACED);
         printf("child pid %d\n", perf_child_pid);
+
+        struct perf_event_attr pe_insts;
+        memset(&pe_insts, 0, sizeof(struct perf_event_attr));
+        pe_insts.type = PERF_TYPE_HARDWARE;
+        pe_insts.size = sizeof(struct perf_event_attr);
+        pe_insts.config = PERF_COUNT_HW_INSTRUCTIONS;
+        pe_insts.disabled = 1;
+        // pe_insts.inherit = 1;
+        pe_insts.exclude_kernel = 1;
+        pe_insts.exclude_hv = 1;
+        pe_insts.exclude_idle = 1;
+        pe_insts.enable_on_exec = 1;
+        // pe_insts.precise_ip = 1;
+
+        if (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio <= 0)
+        {
+            int warmup_start = 0;
+            for (; warmup_start < cfg->simpoint.k; ++warmup_start)
+            {
+                if (cfg->simpoint.points[warmup_start] - (int)cfg->process.warmup_ratio > 0)
+                    break;
+            }
+            points_idx = warmup_start;
+            printf("first %d actual insts:%d\n====================\n", points_idx, 0);
+            int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
+            image_dump_criu(perf_child_pid, dir_fd);
+            
+        }
+
+        pe_insts.sample_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset;
+        pe_insts.wakeup_events = 100;
+
         perf_inst_fd = perf_event_open(&pe_insts, perf_child_pid, -1, -1, 0);
         if (perf_inst_fd == -1)
         {
@@ -138,20 +155,6 @@ int main(int argc, char **argv)
         fcntl(perf_inst_fd, F_SETFL, O_NONBLOCK | O_ASYNC);
         fcntl(perf_inst_fd, __F_SETSIG, SIGIO);
         fcntl(perf_inst_fd, F_SETOWN, getpid());
-
-        if (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio < 0)
-        {
-            int warmup_start = 0;
-            for (; warmup_start < cfg->simpoint.k; ++warmup_start)
-            {
-                if (cfg->simpoint.points[warmup_start] - (int)cfg->process.warmup_ratio > 0)
-                    break;
-            }
-            points_idx = warmup_start;
-            printf("first %d actual insts:%d\n====================\n", points_idx, 0);
-            int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
-            image_dump_criu(perf_child_pid, dir_fd);
-        }
 
         // resume child process
         ioctl(perf_inst_fd, PERF_EVENT_IOC_RESET, 0);
@@ -181,7 +184,7 @@ int main(int argc, char **argv)
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_PERIOD, &new_period);
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
                 }
-                else if(points_idx < cfg->simpoint.k)
+                else if (points_idx < cfg->simpoint.k)
                 {
                     kill(perf_child_pid, SIGTERM);
                     close(perf_inst_fd);
@@ -222,7 +225,6 @@ int main(int argc, char **argv)
                 {
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
                 }
-                
 
                 dump_fire = 0;
                 kill(perf_child_pid, SIGCONT);

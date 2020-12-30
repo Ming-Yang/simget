@@ -16,7 +16,7 @@
 int main()
 {
     int dir_fd = set_image_restore_criu("criu_logs");
-    pid_t pid = image_restore_criu();
+    pid_t pid = image_restore_criu(dir_fd);
 
     printf("restore child pid:%d\n", pid);
     waitpid(pid, NULL, 0);
