@@ -4,21 +4,36 @@
 * libcriu
 * [cjson](https://github.com/DaveGamble/cJSON)
 
-## 文件
+## 源文件
 * perf_example.c:手册中perf_event_open样例
 * perf_count.c:统计一个子进程的指令数
 * perf_ov_dump.c:根据指令数进行一次的CRIU save操作
 * perf_ov_restore.c:根据恢复文件夹的位置进行一次CRIU restore操作
 * perf_ov_loop.c:根据simpoint的interval，生成所有interval的insts,cycles
 * perf_loop_dump.c:根据simpoint的采样点，将每个采样点前的程序状态dump到各自的文件夹下
+* perf_loop_nodump.c:同上，不进行dump操作
 * perf_restore_cnt.c:根据恢复文件夹的位置进行一次CRIU restore操作，并进行预热和insts,cycles统计
 
-## 脚本
-* gen_cfg_file.py:包含几个功能:
-    1. valgrind获取bbv
-    2. simpoint提取采样点
-    3. 根据采样点生成cfg文件，可用于perf_ov_loop.c和perf_loop_dump.c
-* loop_test.py:使用perf_ov_loop进行计算simpoint的结果
+
+## json配置文件
+1. [perf_example.json](cfg/perf_example.json) 用于perf*二进制程序的输入配置
+2. [top_cfg_example.json](script/top_cfg_example.json) 用于运行python脚本的必备配置文件
+
+
+## python脚本
+1. cfg_file_gen.py:
+    * 根据spec提供的specinvoke程序和speccmds.cmd文件获得测试的原命令
+    * 通过不同方式遍历测试点（valgrind、simpoint、perf、qemu-user、自定义指令）
+    * 根据采样点生成cfg文件，可用于perf*程序
+2. criu_calc.py:
+    * 调用perf_loop_dump保存程序镜像点，并生成恢复用的配置文件
+    * 调用perf_restore_cnt恢复镜像，并统计simpoint后的IPC结果
+3. criu_file_size_check_remove.py:
+    * 去掉criu中对文件大小和权限的检查
+4. loop_test.py:
+    * 使用perf_ov_loop进行计算simpoint的结果
+5. simget_util.py:
+    * 一些打印操作
 
 
 ## todo

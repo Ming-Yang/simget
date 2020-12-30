@@ -1,0 +1,27 @@
+{
+    "simget_home": "simget工程路径",
+    "spec_version": 2000,
+    "spec_home": "/home/yangming/spec2000-mips/",
+    "spec_run": "00000002",
+    "dir_out": "/home/yangming/spec2k-simpoint", // 镜像文件输出顶层目录
+    "interval_size": 100000000, // simpoint
+    "warmup_ratio": 0, // 预热比率
+    "valgrind": {
+        "bin_path": "" // valgrind 程序路径
+    },
+    "simpoint": {
+        "bin_path": "", // simpoint程序路径
+        "maxK": 20, // maxK
+        "bbv_file": "",
+        "point_file": "/home/yangming/simget/demo/bb.out.14306_22.points",
+        "weight_file": "/home/yangming/simget/demo/bb.out.14306_22.weights"
+    },
+    "perf_config": {
+        "affinity": 0,
+        "irq_offset": 0
+    },
+    "partial_test": false, //是否开启部分测试
+    "user_test_list": [
+        "181.mcf"
+    ]
+}

@@ -1,0 +1,32 @@
+{
+    "image_dir": "CRIU进程镜像保存位置",
+    "process": { // 被冻结进程信息
+        "path": "进程路径",
+        "filename": "进程名",
+        "args": [
+            "进程",
+            "执行",
+            "参数"
+        ],
+        "affinity": 0, // CPU亲和性
+        "ov_insts": "100000000", // 计数溢出触发指令数（在使用simpoint时，为interval的单位）
+        "irq_offset": 0, // 因中断触发不及时进行的补偿
+        "warmup_ratio": 0.0 // 预热比率，预热指令数=warmup_ratio*ov_insts
+    },
+    "loop": { // 用于simpoint循环测试的结果输出文件
+        "out_file": "/home/yangming/spec2k-simpoint/253.perlbmk/run2/100M_max20_loop_intervals.log"
+    },
+    "simpoint": { // simpoint配置文件
+        "point_file": "/home/yangming/spec2k-simpoint/253.perlbmk/run2/100M_max20_sim.points", 
+        "weight_file": "/home/yangming/spec2k-simpoint/253.perlbmk/run2/100M_max20_sim.weights",
+        "k": 2, // 实际生成的采样点数量，此项及以下均为读取simpoint结果生成的数据
+        "points": [
+            0,
+            10
+        ],
+        "weights": [
+            0.0625,
+            0.9375
+        ]
+    }
+}

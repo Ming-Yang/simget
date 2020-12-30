@@ -10,6 +10,14 @@ from simget_util import get_test_path, get_simpoint_cfg_prefix, print_criu_resul
 
 
 def get_criu_json_filename(prefix, target=True):
+    '''
+    criu result file name increase 1 each time
+    Args: 
+        prefix: string, @request
+            criu result file name prefix
+        target: bool, @optional
+            generate next if true, generate current last result file name otherwise
+    '''
     file_list = glob.glob(prefix+"criu_res_*.json")
     if file_list:
         num = [int(n.split('.')[0].split('_')[-1]) for n in file_list]
@@ -19,7 +27,18 @@ def get_criu_json_filename(prefix, target=True):
 
 
 def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
-    # dump all criu checkpoint into a folder named by checkpoint insts
+    '''
+    dump all criu checkpoint into a folder named by checkpoint insts
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        run: bool, @optional
+            run perf_loop_dump if true, print commond otherwise
+        bias_check: bool, @optional
+            check if dump point is correct(the instructions error between a dumped point and simpoint results is less than an interval)
+        bias_clean: bool, @optional
+            remove the image if the bias is too large
+    '''
     if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
         return
@@ -96,7 +115,16 @@ def dump_criu_all(top_cfg, run=False, bias_check=True, bias_clean=True):
 
 
 def calc_criu_simpoint(top_cfg, local_cfg, run=False):
-    # calc criu restored(according to simpoint) ipc result, calc one testcase once call
+    '''
+    calc criu restored(according to simpoint) ipc result, calc one testcase once call
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        local_cfg: dict, @request
+            config file used for current checkpoint restore
+        run: bool, @optional
+            run perf_restore_cnt if true, print commond otherwise
+    '''
     result_list = []
     return_dir = os.getcwd()
     os.chdir(local_cfg["image_dir"])
@@ -131,8 +159,15 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
 
 
 def calc_criu_all(top_cfg, run=False):
-    # calc criu restored(according to simpoint) ipc result for all checkpoint
-    # if one simpoint has more than one checkpoint, it will restore the nearest one
+    '''
+    calculater criu restored(according to simpoint) ipc result for all checkpoint
+    if one simpoint has more than one checkpoint, it will restore the nearest one
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        run: bool, @optional
+            run perf_restore_cnt if true, print commond otherwise, pass to calc_criu_simpoint
+    '''
     if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
         return
@@ -154,7 +189,8 @@ def calc_criu_all(top_cfg, run=False):
                 os.chdir(inputs)
                 criu_res_dict[dirname][inputs] = {}
                 try:
-                    local_cfg_file = open(simpoint_warm_cfg_prefix+"loop_cfg.json", "r")
+                    local_cfg_file = open(
+                        simpoint_warm_cfg_prefix+"loop_cfg.json", "r")
                     local_cfg = json.load(local_cfg_file)
                     criu_res_dict[dirname][inputs]["points"] = local_cfg["simpoint"]["k"]
                     criu_res_dict[dirname][inputs]["size"] = subprocess.getoutput(
@@ -174,5 +210,6 @@ def calc_criu_all(top_cfg, run=False):
 
         json.dump(criu_res_dict, json_file, indent=4)
 
-    print_criu_result(top_cfg, get_criu_json_filename(simpoint_warm_cfg_prefix, False))
+    print_criu_result(top_cfg, get_criu_json_filename(
+        simpoint_warm_cfg_prefix, False))
     return
