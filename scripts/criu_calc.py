@@ -134,9 +134,6 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
         sys.stdout.flush()
         cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + cfg_filename
         if run == True:
-            with open(cfg_filename, 'r') as cfg_file:
-                cfg = json.load(cfg_file)
-
             result = subprocess.getoutput(cmd)
             print(result)
             result_list.append(float(i) if '.' in i else int(i)

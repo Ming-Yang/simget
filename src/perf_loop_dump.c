@@ -16,9 +16,9 @@
 DumpCfg *cfg;
 int perf_inst_fd;
 int perf_child_pid;
-int points_idx = 0;
-int dump_fire = 0;
-int start_from_idx = 0;
+int points_idx = 0; // current dump point index
+int dump_fire = 0; // 1 if instructions counter overflow, set to 0 after current point is dumped
+int start_from_idx = 0;// setting dump point index
 bool continuous_loop = true;
 
 static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
@@ -44,9 +44,11 @@ static void perf_event_handler(int signum, siginfo_t *info, void *ucontext)
     }
 }
 
-/* argv: 1 config file name 
-         2 start_from_idx 
-         3 enable loop */
+/**
+ * @param .json config file name 
+ * @param index from which start dump 
+ * @param enable loop dump or not
+**/
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -89,13 +91,15 @@ int main(int argc, char **argv)
         set_sched(getpid(), cfg->process.affinity);
         detach_from_shell(cfg);
 
-        raise(SIGSTOP);
+        raise(SIGSTOP); // wait for parent process run first
         execv(cfg->process.path_file, cfg->process.argv);
     }
     else //parent
     {
-        waitpid(perf_child_pid, NULL, WUNTRACED);
+        waitpid(perf_child_pid, NULL, WUNTRACED); // wait for child process stop
+#ifdef _DEBUG
         printf("child pid %d\n", perf_child_pid);
+#endif
 
         struct perf_event_attr pe_insts;
         memset(&pe_insts, 0, sizeof(struct perf_event_attr));
@@ -110,6 +114,8 @@ int main(int argc, char **argv)
         pe_insts.enable_on_exec = 1;
         // pe_insts.precise_ip = 1;
 
+        // if warmup cause the start point earlier than the beginning of the process,
+        // eg. start from 1 million instrutions, but need warmup 2 million instructions
         if (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio <= 0)
         {
             int warmup_start = 0;
@@ -122,7 +128,6 @@ int main(int argc, char **argv)
             printf("first %d actual insts:%d\n====================\n", points_idx, 0);
             int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
             image_dump_criu(perf_child_pid, dir_fd);
-            
         }
 
         pe_insts.sample_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset;
@@ -162,6 +167,7 @@ int main(int argc, char **argv)
 
         while (points_idx < cfg->simpoint.k)
         {
+            // wait for instruction counter overflow
             pause();
             if (dump_fire)
             {
@@ -174,19 +180,18 @@ int main(int argc, char **argv)
                 }
 
                 printf("%d actual insts:%ld\n====================\n", points_idx - 1, inst_counts);
-                int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), true);
+                int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), false);
                 image_dump_criu(perf_child_pid, dir_fd);
-                close(dir_fd);
 
                 if (continuous_loop)
                 {
+                    // update perf_event period
                     long new_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset - inst_counts;
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_PERIOD, &new_period);
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
                 }
-                else if (points_idx < cfg->simpoint.k)
+                else if (!continuous_loop && points_idx < cfg->simpoint.k)
                 {
-                    kill(perf_child_pid, SIGTERM);
                     close(perf_inst_fd);
 
                     long new_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset;
@@ -223,6 +228,7 @@ int main(int argc, char **argv)
                 }
                 else
                 {
+                    // last point, continue running to child process finish
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
                 }
 

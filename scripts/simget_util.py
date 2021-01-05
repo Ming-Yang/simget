@@ -29,7 +29,14 @@ def get_test_path(top_cfg, testname):
 
 
 def get_simpoint_cfg_prefix(top_cfg, warmup=False):
-    # get simpoint cfg prefix use intervals and maxK
+    '''
+    get simpoint cfg prefix use intervals and maxK
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        warmup: bool, @optional
+            true if enable warmup, false otherwise
+    '''
     if warmup == True:
         return str(int(top_cfg["interval_size"]/1000000)) + \
             "M_max" + str(top_cfg["simpoint"]["maxK"]) + \
@@ -40,6 +47,12 @@ def get_simpoint_cfg_prefix(top_cfg, warmup=False):
 
 
 def print_fixed_result(top_cfg):
+    '''
+    print fixed result in readable format through .json file
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+    '''
     filename = get_simpoint_cfg_prefix(top_cfg)+"fix_res.log"
     outfile = open(os.path.join(top_cfg["dir_out"], filename), 'a')
     print_head = True
@@ -67,6 +80,14 @@ def print_fixed_result(top_cfg):
 
 
 def print_criu_result(top_cfg, json_filename):
+    '''
+    print criu result in readable format through .json file
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        json_filename: string, @request
+            json file name of criu results
+    '''
     filename = get_simpoint_cfg_prefix(top_cfg)+"criu_res.log"
     outfile = open(os.path.join(top_cfg["dir_out"], filename), 'a')
     with open(os.path.join(top_cfg["dir_out"], json_filename), 'r') as f:

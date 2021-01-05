@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include "cJSON.h"
 
+// print a long number with comma
 void print_long(long val)
 {
     int val_table[20];
@@ -74,6 +75,7 @@ void print_dump_cfg(DumpCfg *const cfg)
     printf("=================== Dump Config Info ===================\n");
 }
 
+// parse path in .json into a more suitable format for exec* functions usage
 void parse_cfg_path(DumpCfg *cfg)
 {
     size_t m = strlen(cfg->process.path);
@@ -253,6 +255,7 @@ void free_dump_cfg(DumpCfg *cfg)
     free(cfg);
 }
 
+// set process's schedule method and cpu affinity
 void set_sched(pid_t pid, int affinity)
 {
     cpu_set_t cpu_set_cfg;
@@ -273,6 +276,7 @@ void set_sched(pid_t pid, int affinity)
     // }
 }
 
+// detach process from shell, redirect stdio, used for criu
 void detach_from_shell(DumpCfg *cfg)
 {
     int null_fd = open("/dev/null", O_RDWR);
@@ -354,6 +358,7 @@ char *long2string(long num)
     return str;
 }
 
+// join num strings together
 char *nstrjoin(int num, ...)
 {
     va_list args;

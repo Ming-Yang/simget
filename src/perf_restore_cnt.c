@@ -49,15 +49,17 @@ static void warmup_event_handler(int signum, siginfo_t *info, void *ucontext)
 int main(int argc, char **argv)
 {
     cfg = get_cfg_from_json(argv[1]);
-    if (cfg->process.process_pid > 0)
-        kill(cfg->process.process_pid, SIGKILL);
+    // if (cfg->process.process_pid > 0)
+    //     kill(cfg->process.process_pid, SIGKILL);
     restore_out_file = fopen(nstrjoin(2, cfg->image_dir, "_restore_out.log"), "a+");
     int dir_fd = set_image_restore_criu(cfg->image_dir);
-    while (kill(cfg->process.process_pid, 0) == 0)
-        ;
+    // while (kill(cfg->process.process_pid, 0) == 0)
+    //     ;
     perf_child_pid = image_restore_criu(dir_fd);
     set_sched(perf_child_pid, cfg->process.affinity);
-    // printf("restore child pid:%d\n", perf_child_pid);
+#ifdef _DEBUG
+    printf("restore child pid:%d\n", perf_child_pid);
+#endif
 
     struct perf_event_attr pe;
     memset(&pe, 0, sizeof(struct perf_event_attr));
@@ -90,7 +92,7 @@ int main(int argc, char **argv)
     {
         printf("no warmup :");
     }
-    else
+    else // warmup, need call warmup_event_handler
     {
         perf_warmup_fd = perf_event_open(&pe, perf_child_pid, -1, -1, 0);
         if (perf_warmup_fd == -1)

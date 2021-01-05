@@ -8,7 +8,16 @@ from simget_util import get_test_path, get_simpoint_cfg_prefix
 
 
 def rm_criu_file_size_check(ignore_list, run_path):
-    # remove criu file size check in one files.img
+    '''
+    remove criu file size and mode attribute in files.img, criu will ignore size and mode check
+    this function will call criu's python script crit to decode and encode
+    Args:
+        ignore_list: list, @request
+            file names list in which the function will remove file size and mode check
+        run_path: string, @request
+            the path of the criu image directory
+    
+    '''
     old_dir = os.getcwd()
     os.chdir(run_path)
     mod = False
@@ -32,7 +41,14 @@ def rm_criu_file_size_check(ignore_list, run_path):
 
 
 def rm_criu_file_size_check_all(top_cfg, ignore_list):
-    # remove criu file size check in ignore_list
+    '''
+    loop rm files.img size and mode check
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        ignore_list: list, @request
+            file names list in which the function will remove file size and mode check
+    '''
     if os.path.exists(top_cfg["dir_out"]) == False:
         print("no folder exists!")
         return
@@ -66,7 +82,16 @@ def rm_criu_file_size_check_all(top_cfg, ignore_list):
 
 
 def gen_ignore_list(top_cfg, ignore_cfg):
-    # generate ignore list by ignore cfg file
+    '''
+    generate ignore list by ignore cfg file
+    Args:
+        top_cfg: dict, @request
+            base config file, see top_cfg_example.json
+        ignore_cfg: dict, @request
+            file names list in which the function will remove file size and mode check
+    Return:
+        ignore_list: list, can be used by rm_criu_file_size_check_all and rm_criu_file_size_check
+    '''
     ignore_list=[]
     for entry in ignore_cfg["ignore_list"]:
         for name in entry["name"]:
