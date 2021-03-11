@@ -79,6 +79,7 @@ def save_fixed_result(top_cfg):
             avg_result = {}
             simpoint_result = {}
             perf_result = {}
+            pin_result = {}
             mycnt_result = {}
 
             try:
@@ -109,6 +110,17 @@ def save_fixed_result(top_cfg):
                 print(dirname, inputs, "perf.result not found")
 
             try:
+                pin_file = open("pin.result", 'r')
+                pin_insts = re.compile(r"Count ([\d]*)")
+                for line in pin_file.readlines():
+                    match_insts = pin_insts.match(line)
+                    if match_insts:
+                        pin_result["insts"] = int(
+                            match_insts.group(1))
+            except FileNotFoundError:
+                print(dirname, inputs, "pin.result not found")
+
+            try:
                 perf_file = open("mycnt.result", 'r')
                 mycnt_insts = re.compile(r"total inst counts:([\d,]*)")
                 for line in perf_file.readlines():
@@ -134,6 +146,8 @@ def save_fixed_result(top_cfg):
                 input_result["bb_result"] = bb_result
             if len(perf_result) > 0:
                 input_result["perf_result"] = perf_result
+            if len(pin_result) > 0:
+                input_result["pin_result"] = pin_result
             if len(mycnt_result) > 0:
                 input_result["mycnt_result"] = perf_result
 

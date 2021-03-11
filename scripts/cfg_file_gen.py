@@ -19,6 +19,10 @@ def perf_cmd(target_file):
     return "perf stat -e instructions:u,cycles:u,r1c:u,r1d:u,r1e:u,r1f:u -o " + target_file
 
 
+def pin_cmd(top_cfg, target_file):
+    return os.path.join(top_cfg["pin"]["bin_path"], "pin") + " -t " + top_cfg["pin"]["tool"] + " -o " + target_file + " -- "
+
+
 def inst_cnt_cmd(top_cfg):
     cfg_file_name = get_simpoint_cfg_prefix(top_cfg) + "loop_cfg.json"
     return os.path.join(top_cfg["simget_home"], "bin/perf_count ./") + cfg_file_name
@@ -139,6 +143,9 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
                 perf_file = os.path.join(cur_dir, save_dir, "perf.result")
                 full_cmd = perf_cmd(perf_file) + \
                     " taskset -c 3 ./" + cmd["run"]
+            elif method == "pin":
+                pin_file = os.path.join(cur_dir, save_dir, "pin.result")
+                full_cmd = pin_cmd(top_cfg, pin_file) + " ./" + cmd["run"]
             elif method == "inst-cnt":
                 full_cmd = inst_cnt_cmd(top_cfg)
             else:
