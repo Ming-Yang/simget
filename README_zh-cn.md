@@ -40,8 +40,8 @@
 unshare -p -m --fork --mount-proc 有些情况下，pid会被kthread占用，利用该命令可以新建一个pid namespace，避免冲突
 
 ## bugs
-1. spec2k 187.facerec 程序执行过程中会不断输出到文件。restore和save的时候，文件大小是不一样的。其他测试可能有一样的问题。最好的方式是每次dump的同时保存硬盘下的文件镜像\
-相同问题的文件还有：
+1. 文件size和mode检查的问题：
+CRIU在恢复时会对文件size和mode进行检查，判断是否一致，对于某些输入输出文件，这个检查是不必要的，如：
 * 187.facerec/run/00000002/hops.out
 * 176.gcc/run/00000002/166.s integrate.s 200.s scilab.s expr.s
 * 177.mesa/run/00000002/mesa.lo
@@ -50,5 +50,6 @@ unshare -p -m --fork --mount-proc 有些情况下，pid会被kthread占用，利
 * 191.fma3d/run/00000002/fmaelo.out
 * 200.sixtrack/run/00000002/fort.31
 * 171.swim/run/00000002/SWIM7
+CRIU恢复时会检查所有相关文件，在不同机器上进行恢复时，其权限不同的概率很大。因此当前的脚本中利用crit decode和encode将所有的文件size和mode记录都去掉了。但是需要注意，如果恢复时用到的执行文件没有运行权限的话，将会导致报错：sys_prctl(PR_SET_MM, PR_SET_MM_MAP) failed with 13。此时需要对可执行文件chmod +x
 2. 如果用FIFO调度，perf计算的时钟周期比普通要高，但是总体的运行时间要低
 3. valgrind的计数结果和perf有出入，有多有少，且差距很大，1e-5以上。不同x86机器上同一个二进制用valgrind跑的结果也有差距，1e-8

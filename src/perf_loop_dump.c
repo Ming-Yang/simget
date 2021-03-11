@@ -126,7 +126,7 @@ int main(int argc, char **argv)
             }
             points_idx = warmup_start;
             printf("first %d actual insts:%d\n====================\n", points_idx, 0);
-            int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), true);
+            int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(2, cfg->image_dir, "/0"), continuous_loop);
             image_dump_criu(perf_child_pid, dir_fd);
         }
 
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
                 }
 
                 printf("%d actual insts:%ld\n====================\n", points_idx - 1, inst_counts);
-                int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), false);
+                int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), continuous_loop);
                 image_dump_criu(perf_child_pid, dir_fd);
 
                 if (continuous_loop)
@@ -237,6 +237,7 @@ int main(int argc, char **argv)
             }
         }
 
+        kill(perf_child_pid, SIGTERM);
         waitpid(perf_child_pid, NULL, 0);
         printf("finish loop dump\n");
         long inst_counts = 0, cycle_counts = 0;
