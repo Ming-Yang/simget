@@ -22,10 +22,8 @@ def perf_cmd(target_file):
 def pin_cmd(top_cfg, target_file):
     return os.path.join(top_cfg["pin"]["bin_path"], "pin") + " -t " + top_cfg["pin"]["tool"] + " -o " + target_file + " -- "
 
-
-def inst_cnt_cmd(top_cfg):
-    cfg_file_name = get_simpoint_cfg_prefix(top_cfg) + "loop_cfg.json"
-    return os.path.join(top_cfg["simget_home"], "bin/perf_count ./") + cfg_file_name
+def mycnt_cmd(top_cfg, cfg_file, target_file):
+    return os.path.join(top_cfg["simget_home"], "bin/perf_count ") + cfg_file + " > " + target_file
 
 
 def simpoint_cmd(top_cfg, bb_file, points, weights):
@@ -109,7 +107,7 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
         os.mkdir(top_cfg["dir_out"])
     os.chdir(top_cfg["dir_out"])
 
-    pool = Pool(int(cpu_count()/2))
+    pool = Pool(int(cpu_count()/2 if cpu_count() > 1 else 1))
 
     full_cmd_list = []
     bb_file = None
@@ -146,18 +144,20 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
             elif method == "pin":
                 pin_file = os.path.join(cur_dir, save_dir, "pin.result")
                 full_cmd = pin_cmd(top_cfg, pin_file) + " ./" + cmd["run"]
-            elif method == "inst-cnt":
-                full_cmd = inst_cnt_cmd(top_cfg)
+            elif method == "mycnt":
+                cfg_file = os.path.join(cur_dir, save_dir, get_simpoint_cfg_prefix(top_cfg, True)) + "loop_cfg.json"
+                target_file = os.path.join(cur_dir, save_dir, "mycnt.result")
+                full_cmd = mycnt_cmd(top_cfg, cfg_file, target_file)
             else:
                 raise ValueError
 
-            if cmd["input_file"] != None:
-                full_cmd += " < " + cmd["input_file"]
-            if method != "inst-cnt":
-                full_cmd += " > std.out 2>> std.err"
+            if method != "mycnt":
+            	if cmd["input_file"] != None:
+            	    full_cmd += " < " + cmd["input_file"]
+            	full_cmd += " > std.out 2>> std.err"
 
             if run == True:
-                if method == "perf":
+                if method == "perf" or method == "mycnt":
                     subprocess.run(full_cmd, shell=True, cwd=cmd["path"])
                 else:
                     pool.apply_async(func=subprocess.run, kwds={

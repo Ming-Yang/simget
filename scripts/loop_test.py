@@ -123,11 +123,16 @@ def save_fixed_result(top_cfg):
             try:
                 perf_file = open("mycnt.result", 'r')
                 mycnt_insts = re.compile(r"total inst counts:([\d,]*)")
+                mycnt_cycles = re.compile(r"total cycle counts:([\d,]*)")
                 for line in perf_file.readlines():
                     match_insts = mycnt_insts.match(line)
+                    match_cycles = mycnt_cycles.match(line)
                     if match_insts:
                         mycnt_result["insts"] = int(
                             match_insts.group(1).replace(',', ''))
+                    if match_cycles:
+                        mycnt_result["cycles"] = int(
+                            match_cycles.group(1).replace(',', ''))
             except FileNotFoundError:
                 print(dirname, inputs, "mycnt.result not found")
 
@@ -149,7 +154,7 @@ def save_fixed_result(top_cfg):
             if len(pin_result) > 0:
                 input_result["pin_result"] = pin_result
             if len(mycnt_result) > 0:
-                input_result["mycnt_result"] = perf_result
+                input_result["mycnt_result"] = mycnt_result
 
             if len(loop_result) > 0:
                 input_result["loop_result"] = loop_result

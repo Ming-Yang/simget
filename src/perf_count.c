@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     print_dump_cfg(cfg);
 #endif
 
-    struct perf_event_attr pe;
+    struct perf_event_attr pe, pe2;
     memset(&pe, 0, sizeof(struct perf_event_attr));
     pe.type = PERF_TYPE_HARDWARE;
     pe.size = sizeof(struct perf_event_attr);
@@ -39,6 +39,8 @@ int main(int argc, char **argv)
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
     pe.enable_on_exec = 1;
+    pe2 = pe;
+    pe2.config = PERF_COUNT_HW_CPU_CYCLES;
 
     pid_t fork_pid = fork();
     if (fork_pid < 0)
@@ -60,6 +62,7 @@ int main(int argc, char **argv)
         waitpid(perf_child_pid, NULL, WUNTRACED);
 
         perf_open_fd = perf_event_open(&pe, perf_child_pid, cfg->process.affinity, -1, 0);
+        perf_open_fd2 = perf_event_open(&pe2, perf_child_pid, cfg->process.affinity, -1, 0);
         if (perf_open_fd == -1)
         {
             fprintf(stderr, "Error opening leader %llx\n", pe.config);
@@ -69,12 +72,14 @@ int main(int argc, char **argv)
 
         // resume child process
         ioctl(perf_open_fd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(perf_open_fd2, PERF_EVENT_IOC_RESET, 0);
         kill(perf_child_pid, SIGCONT);
         waitpid(perf_child_pid, NULL, 0);
         ioctl(perf_open_fd, PERF_EVENT_IOC_DISABLE, 0);
+        ioctl(perf_open_fd2, PERF_EVENT_IOC_DISABLE, 0);
 
-        long inst_counts = 0;
-        if (read(perf_open_fd, &inst_counts, sizeof(long)) == -1)
+        long inst_counts, cycle_counts = 0;
+        if (read(perf_open_fd, &inst_counts, sizeof(long)) == -1 || read(perf_open_fd2, &cycle_counts, sizeof(long)) == -1)
         {
             fprintf(stderr, "read perf event empty!\n");
         }
@@ -82,8 +87,11 @@ int main(int argc, char **argv)
         {
             printf("total inst counts:");
             print_long(inst_counts);
+            printf("total cycle counts:");
+            print_long(cycle_counts);
         }
 
         close(perf_open_fd);
+        close(perf_open_fd2);
     }
 }
