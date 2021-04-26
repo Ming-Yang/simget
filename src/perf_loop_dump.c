@@ -183,7 +183,7 @@ int main(int argc, char **argv)
                 int dir_fd = set_image_dump_criu(perf_child_pid, nstrjoin(3, cfg->image_dir, "/", long2string(inst_counts)), continuous_loop);
                 image_dump_criu(perf_child_pid, dir_fd);
 
-                if (continuous_loop)
+                if (continuous_loop && points_idx < cfg->simpoint.k)
                 {
                     // update perf_event period
                     long new_period = (cfg->simpoint.points[points_idx] - (int)cfg->process.warmup_ratio) * cfg->process.ov_insts - cfg->process.irq_offset - inst_counts;
@@ -229,6 +229,8 @@ int main(int argc, char **argv)
                 else
                 {
                     // last point, continue running to child process finish
+                    long new_period = 1UL << 63 - 1;
+                    ioctl(perf_inst_fd, PERF_EVENT_IOC_PERIOD, &new_period);
                     ioctl(perf_inst_fd, PERF_EVENT_IOC_ENABLE, 0);
                 }
 
@@ -237,8 +239,7 @@ int main(int argc, char **argv)
             }
         }
 
-        kill(perf_child_pid, SIGTERM);
-        waitpid(perf_child_pid, NULL, 0);
+	waitpid(perf_child_pid, NULL, 0);
         printf("finish loop dump\n");
         long inst_counts = 0, cycle_counts = 0;
         if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)

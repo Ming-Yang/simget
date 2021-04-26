@@ -157,8 +157,11 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
                 full_cmd += " > std.out 2>> std.err"
 
             if run == True:
-                pool.apply_async(func=subprocess.run, kwds={
-                    "args": full_cmd, "shell": True, "cwd": cmd["path"]})
+                if method == "perf":
+                    subprocess.run(full_cmd, shell=True, cwd=cmd["path"])
+                else:
+                    pool.apply_async(func=subprocess.run, kwds={
+                        "args": full_cmd, "shell": True, "cwd": cmd["path"]})
             else:
                 full_cmd_list.append(full_cmd)
 
