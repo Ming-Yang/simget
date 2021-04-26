@@ -134,8 +134,9 @@ def calc_criu_simpoint(top_cfg, local_cfg, run=False):
         sys.stdout.flush()
         cmd = top_cfg["simget_home"] + "/bin/perf_restore_cnt " + cfg_filename
         if run == True:
-            result = subprocess.getoutput(cmd)
-            print(result)
+            ret = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
+            result = ret.stdout.decode()
+            print(result, end='')
             result_list.append(float(i) if '.' in i else int(i)
                                for i in result.split(':')[-1].split(' '))
         else:
