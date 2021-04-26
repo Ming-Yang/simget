@@ -240,7 +240,7 @@ int main(int argc, char **argv)
             }
         }
 
-	waitpid(perf_child_pid, NULL, 0);
+        waitpid(perf_child_pid, NULL, 0);
         printf("finish loop dump\n");
         long inst_counts = 0, cycle_counts = 0;
         if (read(perf_inst_fd, &inst_counts, sizeof(long)) == -1)
