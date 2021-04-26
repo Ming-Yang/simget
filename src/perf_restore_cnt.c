@@ -53,6 +53,7 @@ int main(int argc, char **argv)
     //     kill(cfg->process.process_pid, SIGKILL);
     restore_out_file = fopen(nstrjoin(2, cfg->image_dir, "_restore_out.log"), "a+");
     int dir_fd = set_image_restore_criu(cfg->image_dir);
+    set_sched(getpid(), cfg->process.affinity);
     // while (kill(cfg->process.process_pid, 0) == 0)
     //     ;
     perf_child_pid = image_restore_criu(dir_fd);

@@ -96,6 +96,7 @@ int main(int argc, char **argv)
     }
     else //parent
     {
+        set_sched(getpid(), cfg->process.affinity);
         waitpid(perf_child_pid, NULL, WUNTRACED); // wait for child process stop
 #ifdef _DEBUG
         printf("child pid %d\n", perf_child_pid);
