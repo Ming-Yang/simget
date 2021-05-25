@@ -194,11 +194,14 @@ def calc_criu_all(top_cfg, run=False):
                     criu_res_dict[dirname][inputs]["size"] = subprocess.getoutput(
                         "du -sh "+local_cfg["image_dir"]).split()[0]
                     print(dirname, inputs)
+                    start = time.time()
                     criu_res_dict[dirname][inputs]["insts"], \
                         criu_res_dict[dirname][inputs]["cycles"], \
                         criu_res_dict[dirname][inputs]["ipc"] = \
                         calc_criu_simpoint(top_cfg, local_cfg, run)
+                    end = time.time()
                     print("ipc:", criu_res_dict[dirname][inputs]["ipc"])
+                    print("cost ", end-start, "seconds")
 
                 except Exception as exc:
                     print("run error!", exc)

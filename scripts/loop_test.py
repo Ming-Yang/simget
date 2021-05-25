@@ -91,7 +91,8 @@ def save_fixed_result(top_cfg):
                         bb_result["insts"] = int(
                             match_insts.group(1).replace(',', ''))
             except FileNotFoundError:
-                print(dirname, inputs, "simpoint.bb not found")
+                # print(dirname, inputs, "simpoint.bb not found")
+                pass
 
             try:
                 perf_file = open("perf.result", 'r')
@@ -106,8 +107,10 @@ def save_fixed_result(top_cfg):
                     elif match_cycles:
                         perf_result["cycles"] = int(
                             match_cycles.group(1).replace(',', ''))
+                        perf_result["ipc"] = perf_result["insts"]/perf_result["cycles"]
             except FileNotFoundError:
-                print(dirname, inputs, "perf.result not found")
+                # print(dirname, inputs, "perf.result not found")
+                pass
 
             try:
                 pin_file = open("pin.result", 'r')
@@ -118,7 +121,8 @@ def save_fixed_result(top_cfg):
                         pin_result["insts"] = int(
                             match_insts.group(1))
             except FileNotFoundError:
-                print(dirname, inputs, "pin.result not found")
+                pass
+                # print(dirname, inputs, "pin.result not found")
 
             try:
                 perf_file = open("mycnt.result", 'r')
@@ -134,7 +138,8 @@ def save_fixed_result(top_cfg):
                         mycnt_result["cycles"] = int(
                             match_cycles.group(1).replace(',', ''))
             except FileNotFoundError:
-                print(dirname, inputs, "mycnt.result not found")
+                # print(dirname, inputs, "mycnt.result not found")
+                pass
 
             try:
                 loop_cfg_file = open(
@@ -145,7 +150,8 @@ def save_fixed_result(top_cfg):
                     simpoint_result["insts"], simpoint_result["cycles"], simpoint_result["ipc"] = \
                     resolve_loop_result_file(loop_cfg)
             except Exception as exc:
-                print(dirname, inputs, "Exception", exc)
+                # print(dirname, inputs, "Exception", exc)
+                pass
 
             if len(bb_result) > 0:
                 input_result["bb_result"] = bb_result

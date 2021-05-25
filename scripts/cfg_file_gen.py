@@ -2,6 +2,7 @@ import json
 import sys
 import os
 import subprocess
+import time
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from simget_util import get_test_path, get_simpoint_cfg_prefix
@@ -112,6 +113,7 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
     full_cmd_list = []
     bb_file = None
     perf_file = None
+    start = time.time()
     for cmd_set in cmd_list:
         test_name = cmd_set[0]["path"].split('/')[-3]
         if top_cfg["partial_test"] == True and test_name not in top_cfg["user_test_list"]:
@@ -171,6 +173,8 @@ def traverse_raw_cmd(top_cfg, cmd_list, method="valgrind", run=False):
         pool.close()
         print("waiting for calc...")
         pool.join()
+        end = time.time()
+        print("cost ", end-start, "seconds")
     else:
         print("============== full cmds ==============")
         for each in full_cmd_list:

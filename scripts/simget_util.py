@@ -55,6 +55,7 @@ def print_fixed_result(top_cfg):
     '''
     filename = get_simpoint_cfg_prefix(top_cfg)+"fix_res.log"
     outfile = open(os.path.join(top_cfg["dir_out"], filename), 'a')
+    outfile = sys.stdout
     print_head = True
     with open(os.path.join(top_cfg["dir_out"], "fix_test_res.json"), 'r') as f:
         res_dict = json.load(f)

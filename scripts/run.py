@@ -45,17 +45,28 @@ else:
         cmd_list = json.load(cmd_file)
 
 # full flow example:
-# traverse_raw_cmd(top_cfg, cmd_list, "qemu-user", True)
+
+
+print("\n\n\n+++++++++++++++++++++control group+++++++++++++++++++++++++++++")
+traverse_raw_cmd(top_cfg, cmd_list, "perf", False)
+traverse_raw_cmd(top_cfg, cmd_list, "perf", True)
+save_fixed_result(top_cfg)
+print_fixed_result(top_cfg)
+
+print("\n\n\n+++++++++++++++++++++designed platform+++++++++++++++++++++++++++++")
+# print("\n++++++++++++++++++++++++pre++++++++++++++++++++++++++++++++++++++++")
+# traverse_raw_cmd(top_cfg, cmd_list, "valgrind", False)
+# traverse_raw_cmd(top_cfg, cmd_list, "valgrind", True)
 # run_simpoint(top_cfg, True)
 # gen_perf_loop_cfg_file(top_cfg, cmd_list)
-#
-# run_loop_test(top_cfg, True)
-# save_fixed_result(top_cfg)
-# print_fixed_result(top_cfg)
-#
-# dump_criu_all(top_cfg, run=False, bias_clean=False)
-# ignore_list = gen_ignore_list(top_cfg, criu_rm_cfg)
-# rm_criu_file_size_check_all(top_cfg, ignore_list)
-# for i in range(1, loop_times+1):
-#     print("@run",i)
-#     calc_criu_all(top_cfg, True)
+# run_loop_test(top_cfg, False)
+
+print("\n++++++++++++++++++++++++front end++++++++++++++++++++++++++++++++++")
+dump_criu_all(top_cfg, run=True, bias_clean=False)
+ignore_list = []
+rm_criu_file_size_check_all(top_cfg, ignore_list)
+
+print("\n++++++++++++++++++++++++back end++++++++++++++++++++++++++++++++++")
+for i in range(1, loop_times+1):
+    print("@run",i)
+    calc_criu_all(top_cfg, True)
